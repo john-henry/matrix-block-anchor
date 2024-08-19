@@ -5,6 +5,7 @@
 ### Added
 
 - Craft 5 support.
+- Github Workflow files
 
 ## 1.0.0
 - Initial release
