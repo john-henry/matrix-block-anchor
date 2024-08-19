@@ -4,7 +4,7 @@ A Craft CMS field that enables content editors to create anchor links directly t
 
 ## Requirements
 
-This plugin requires Craft CMS 4.0.0 or later, and PHP 8.0 or later.
+This plugin requires Craft CMS 5.0.0 or later, and PHP 8.2 or later.
 
 ## Installation
 

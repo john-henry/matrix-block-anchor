@@ -15,8 +15,8 @@
     "email": "info@johnhenry.ie"
   },
   "require": {
-    "php": ">=8.0",
-    "craftcms/cms": "^4.0.0"
+    "php": ">=8.2",
+    "craftcms/cms": "^5.0.0"
   },
   "require-dev": {
     "craftcms/ecs": "dev-main",
@@ -42,7 +42,7 @@
   "config": {
     "sort-packages": true,
     "platform": {
-      "php": "8.0"
+      "php": "8.2"
     },
     "allow-plugins": {
       "yiisoft/yii2-composer": true,
