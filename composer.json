@@ -1,0 +1,52 @@
+{
+  "name": "johnhenry/matrix-block-anchor",
+  "description": "Anchor field that allows a user to copy a link to the ID of a Matrix block",
+  "type": "craft-plugin",
+  "keywords": [
+    "craft",
+    "cms",
+    "craftcms",
+    "craft-plugin",
+    "matrix",
+    "anchor"
+  ],
+  "license": "proprietary",
+  "support": {
+    "email": "info@johnhenry.ie"
+  },
+  "require": {
+    "php": ">=8.0",
+    "craftcms/cms": "^4.0.0"
+  },
+  "require-dev": {
+    "craftcms/ecs": "dev-main",
+    "craftcms/phpstan": "dev-main"
+  },
+  "autoload": {
+    "psr-4": {
+      "johnhenry\\matrixblockanchor\\": "src/"
+    }
+  },
+  "extra": {
+    "handle": "matrix-block-anchor",
+    "name": "Matrix Block Anchor",
+    "class": "johnhenry\\matrixblockanchor\\MatrixBlockAnchor",
+    "developer": "John Henry Donovan",
+    "documentationUrl": ""
+  },
+  "scripts": {
+    "check-cs": "ecs check --ansi",
+    "fix-cs": "ecs check --ansi --fix",
+    "phpstan": "phpstan --memory-limit=1G"
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.0"
+    },
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true,
+      "craftcms/plugin-installer": true
+    }
+  }
+}

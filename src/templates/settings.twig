@@ -1,0 +1,9 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+   label: 'Anchor Prefix',
+   instructions: 'Enter the desired Matrix block anchor prefix here',
+   id: 'anchorPrefix',
+   name: 'anchorPrefix',
+   value: settings['anchorPrefix']})
+}}
