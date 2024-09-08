@@ -2,6 +2,7 @@
   "name": "johnhenry/matrix-block-anchor",
   "description": "Anchor field that allows a user to copy a link to the ID of a Matrix block",
   "type": "craft-plugin",
+  "version": "2.0.1",
   "keywords": [
     "craft",
     "cms",
