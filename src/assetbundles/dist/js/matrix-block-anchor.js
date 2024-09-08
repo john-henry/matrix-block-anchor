@@ -4,7 +4,7 @@
     // Add a status flag
     let isProcessing = false;
 
-    $('.clip-copy').click((e) => {
+    $(document).on('click','.clip-copy', function(e) {
         // Block if still processing
         if (isProcessing) {
             return;
