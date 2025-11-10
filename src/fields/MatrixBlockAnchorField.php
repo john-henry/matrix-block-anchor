@@ -59,6 +59,7 @@ class MatrixBlockAnchorField extends Field
         return 'Matrix Block Anchor';
     }
 
+
     /**
      * Gets the anchor prefix from plugin settings
      *

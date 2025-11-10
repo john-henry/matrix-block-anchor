@@ -10,11 +10,9 @@ namespace johnhenry\matrixblockanchor;
 
 use Craft;
 use craft\base\Plugin as BasePlugin;
-
 use craft\events\RegisterComponentTypesEvent;
 use craft\services\Fields;
 use craft\web\View;
-
 use johnhenry\matrixblockanchor\assetbundles\MatrixBlockAnchorAssets;
 use johnhenry\matrixblockanchor\fields\MatrixBlockAnchorField;
 use johnhenry\matrixblockanchor\models\Settings;
