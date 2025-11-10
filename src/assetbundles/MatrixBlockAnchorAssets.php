@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * @copyright Copyright (c) John Henry Donovan
+ */
+
 namespace johnhenry\matrixblockanchor\assetbundles;
 
 use craft\web\AssetBundle;

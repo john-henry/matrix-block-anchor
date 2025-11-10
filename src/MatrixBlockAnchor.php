@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * @copyright Copyright (c) John Henry Donovan
+ */
+
 namespace johnhenry\matrixblockanchor;
 
 use Craft;
@@ -13,12 +19,7 @@ use johnhenry\matrixblockanchor\assetbundles\MatrixBlockAnchorAssets;
 use johnhenry\matrixblockanchor\fields\MatrixBlockAnchorField;
 use johnhenry\matrixblockanchor\models\Settings;
 
-use Twig\Error\LoaderError;
-use Twig\Error\RuntimeError;
-use Twig\Error\SyntaxError;
 use yii\base\Event;
-use yii\base\Exception;
-
 
 /**
  * Matrix Block Anchor plugin
@@ -79,7 +80,7 @@ class MatrixBlockAnchor extends BasePlugin
         return Craft::$app->view->renderTemplate(
             'matrix-block-anchor/settings',
             [
-                'settings' => $this->getSettings()
+                'settings' => $this->getSettings(),
             ]
         );
     }

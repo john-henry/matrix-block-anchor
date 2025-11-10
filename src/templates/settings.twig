@@ -1,9 +1,27 @@
 {% import "_includes/forms" as forms %}
 
+{{ forms.lightswitchField({
+   label: 'Allow Custom Anchors'|t('matrix-block-anchor'),
+   instructions: 'Enable this to allow users to enter their own custom anchor text instead of using the auto-generated anchors.'|t('matrix-block-anchor'),
+   id: 'allowCustomAnchors',
+   name: 'allowCustomAnchors',
+   on: settings['allowCustomAnchors'] ?? false
+}) }}
+
 {{ forms.textField({
-   label: 'Anchor Prefix',
-   instructions: 'Enter the desired Matrix block anchor prefix here',
+   label: (settings['allowCustomAnchors'] ?? false) ? 'Anchor Prefix (disabled)'|t('matrix-block-anchor') : 'Anchor Prefix'|t('matrix-block-anchor'),
+   instructions: 'Enter the desired Matrix block anchor prefix here.'|t('matrix-block-anchor'),
    id: 'anchorPrefix',
    name: 'anchorPrefix',
-   value: settings['anchorPrefix']})
-}}
+   value: settings['anchorPrefix'],
+   disabled: settings['allowCustomAnchors'] ?? false,
+   errors: settings.getErrors('anchorPrefix')
+}) }}
+
+{{ forms.lightswitchField({
+   label: (settings['allowCustomAnchors'] ?? false) ? 'Use Legacy Separator (disabled)'|t('matrix-block-anchor') : 'Use Legacy Separator'|t('matrix-block-anchor'),
+   instructions: 'Enable this for backward compatibility with older plugin versions that always included a separator dash'|t('matrix-block-anchor'),
+   name: 'useLegacySeparator',
+   on: settings.useLegacySeparator,
+   disabled: settings['allowCustomAnchors'] ?? false
+}) }}

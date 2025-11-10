@@ -2,10 +2,12 @@
 
 <div class="copytext">
    {{ forms.text({
-	  class: 'disabled',
+	  class: allowCustomAnchors ? '' : 'disabled',
 	  name: name,
 	  value: value,
-	  disabled: true,
+	  disabled: not allowCustomAnchors,
+	  placeholder: allowCustomAnchors ? '#my-custom-anchor' : null,
+	  instructions: allowCustomAnchors ? 'Enter a unique anchor ID. Must not start with a number or contain spaces.'|t('matrix-block-anchor') : null,
    }) }}
    {{ tag('a', {
 	  class: 'btn clip-copy',

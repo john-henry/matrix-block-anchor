@@ -31,21 +31,70 @@ composer require johnhenry/matrix-block-anchor
 
 ## Configuring Matrix Block Anchors
 
-The default prefix for anchor IDs is `blockIdAnchor`, which can be customized in the Matrix Block Anchor plugin settings. In most cases, this default setting works well.
+The plugin offers several configuration options in the Matrix Block Anchor plugin settings:
+
+### Anchor Prefix
+
+The default prefix for anchor IDs is `blockIdAnchor`, which can be customized in the plugin settings. In most cases, this default setting works well. A prefix is required as an ID cannot start with a number (block IDs start with a number).
+
+### Custom Anchor Settings
+
+The plugin includes an "Allow Custom Anchors" setting that enables content editors to create custom anchor IDs instead of using auto-generated ones. This is useful for:
+- Creating meaningful, human-readable anchor links
+- Improving SEO with descriptive anchor text
+- Maintaining consistent anchor links even if content is reordered
+
+When custom anchors are enabled:
+- Anchor IDs cannot start with a number
+- Anchor IDs cannot contain spaces
+- Each anchor must be unique within the same entry
+
+### Legacy Separator Setting
+
+The "Use Legacy Separator" setting provides backward compatibility for users upgrading from older plugin versions (prior to v3.0.0).
+
+**For new installations:** Leave this disabled (default). Anchors with a prefix will generate cleanly as `#blockIdAnchor123` instead of `#blockIdAnchor-123`.
+
+**For existing installations upgrading from v2.x or earlier:** If you have existing anchors in the format `#blockIdAnchor-123` (with a leading dash when no prefix was set), enable this setting to maintain the same format and prevent broken links.
+
 
 ## Using Matrix Block Anchors
 
-Create a new field and choose Matrix Block Anchor as field type.Add this new field to each Matrix block where you want an anchor.
+Create a new field and choose Matrix Block Anchor as field type. Add this new field to each Matrix block where you want an anchor.
 
-The default anchor prefix is `blockIdAnchor`, which will generate an anchor link in the control panel, such as `#blockIdAnchor-424242`.
+### Auto-Generated Anchors
 
-In a typical Matrix page builder setup, simply add an ID to your block's parent div or section. Make sure to update the prefix to match what you've set in the plugin settings and seperate with a hyphen from the `block.id` variable.
+By default, anchors are automatically generated using the block ID. With the default prefix `blockIdAnchor`, an anchor link will appear in the control panel as `#blockIdAnchor424242`.
+
+In a typical Matrix page builder setup, add an ID to your block's parent div or section by constructing it from the prefix and block ID. Make sure to update the prefix to match what you've set in the plugin settings:
 
 
-
+```twig
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="blockIdAnchor{{ block.id }}">
 ```
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="blockIdAnchor-{{ block.id }}">
+
+
+### Custom Anchors
+
+When "Allow Custom Anchors" is enabled in the field settings, content editors can enter their own anchor IDs. For example:
+- `#about-us`
+- `#pricing-section`
+- `#contact-form`
+
+Custom anchors are validated to ensure they:
+- Contain at least one character
+- Don't start with a number
+- Don't contain spaces
+- Are unique within the entry
+
+In a typical Matrix page builder setup, use the field handle directly as the ID value:
+
+```twig
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="{{ block.yourFieldHandle }}">
 ```
+
+Note: Replace `yourFieldHandle` with the actual handle of your Matrix Block Anchor field.
+
 ### Matrix Page Builder Resources
 
 - https://www.youtube.com/watch?v=rw3kNg4CF1g

@@ -13,4 +13,6 @@
 
 return [
     'anchorPrefix' => 'blockIdAnchor',
+    'allowCustomAnchors' => false,
+    'useLegacySeparator' => false,
 ];
