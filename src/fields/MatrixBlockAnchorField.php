@@ -375,29 +375,4 @@ class MatrixBlockAnchorField extends Field
         return ltrim($value, '#');
     }
 
-    /**
-     * Gets the anchor value for template display
-     *
-     * Returns the custom anchor if set, otherwise generates default anchor using prefix + block ID
-     *
-     * @param mixed $value The field value
-     * @param ElementInterface|null $element The element (matrix block)
-     * @return string The anchor value without hash prefix
-     */
-    public function getAnchorValue(mixed $value, ?ElementInterface $element = null): string
-    {
-        $allowCustomAnchors = $this->getAllowCustomAnchors();
-
-        // If custom anchors are allowed and a value is set, use it
-        if ($allowCustomAnchors && !empty($value)) {
-            return $this->removeHashPrefix($value);
-        }
-
-        // Otherwise, generate default anchor
-        $matrixBlockId = $element?->canonicalId ?? $element?->id ?? '';
-        $anchorPrefix = $this->getAnchorPrefix();
-        $separator = $this->determineSeparator($anchorPrefix);
-
-        return $anchorPrefix . $separator . $matrixBlockId;
-    }
 }
