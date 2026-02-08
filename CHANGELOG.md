@@ -1,5 +1,10 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.1.1 - 2026-01-08
+
+### Added
+- Added Documentation URL
+
 ## 3.1.0 - 2026-01-08
 
 ### Changed
