@@ -33,10 +33,6 @@ composer require johnhenry/matrix-block-anchor
 
 The plugin offers several configuration options in the Matrix Block Anchor plugin settings:
 
-### Anchor Prefix
-
-The default prefix for anchor IDs is `blockIdAnchor`, which can be customized in the plugin settings. In most cases, this default setting works well. A prefix is required as an ID cannot start with a number (block IDs start with a number).
-
 ### Custom Anchor Settings
 
 The plugin includes an "Allow Custom Anchors" setting that enables content editors to create custom anchor IDs instead of using auto-generated ones. This is useful for:
@@ -48,6 +44,11 @@ When custom anchors are enabled:
 - Anchor IDs cannot start with a number
 - Anchor IDs cannot contain spaces
 - Each anchor must be unique within the same entry
+
+### Anchor Prefix
+
+The default prefix for anchor IDs is `blockIdAnchor`, which can be customized in the plugin settings. In most cases, this default setting works well. A prefix is required as an ID cannot start with a number (block IDs start with a number).
+
 
 ### Legacy Separator Setting
 
@@ -66,13 +67,6 @@ Create a new field and choose Matrix Block Anchor as field type. Add this new fi
 
 By default, anchors are automatically generated using the block ID. With the default prefix `blockIdAnchor`, an anchor link will appear in the control panel as `#blockIdAnchor424242`.
 
-In a typical Matrix page builder setup, add an ID to your block's parent div or section by constructing it from the prefix and block ID. Make sure to update the prefix to match what you've set in the plugin settings:
-
-
-```twig
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="blockIdAnchor{{ block.id }}">
-```
-
 
 ### Custom Anchors
 
@@ -86,6 +80,10 @@ Custom anchors are validated to ensure they:
 - Don't start with a number
 - Don't contain spaces
 - Are unique within the entry
+
+If a custom anchor is not used in a Matrix block then it will default to the auto-generated anchor.
+
+### Using in templates
 
 In a typical Matrix page builder setup, use the field handle directly as the ID value:
 

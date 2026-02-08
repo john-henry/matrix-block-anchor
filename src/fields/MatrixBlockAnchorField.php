@@ -80,20 +80,29 @@ class MatrixBlockAnchorField extends Field
     }
 
     /**
-     * Normalizes the value for storage
+     * Normalizes the value for storage and template output
      *
-     * Removes the # prefix from anchor values before storage.
+     * Returns the custom anchor if set, otherwise generates default anchor using prefix + block ID
      *
      * @param mixed $value The raw field value
      * @param ElementInterface|null $element The element the field is associated with
-     * @return mixed The normalized value
+     * @return string The anchor value without hash prefix
      */
-    public function normalizeValue(mixed $value, ?ElementInterface $element = null): mixed
+    public function normalizeValue(mixed $value, ?ElementInterface $element = null): string
     {
-        if (is_string($value)) {
-            $value = $this->removeHashPrefix($value);
+        $allowCustomAnchors = $this->getAllowCustomAnchors();
+
+        // If custom anchors are allowed and a value is set, use it
+        if ($allowCustomAnchors && !empty($value)) {
+            return $this->removeHashPrefix($value);
         }
-        return $value;
+
+        // Otherwise, generate default anchor
+        $matrixBlockId = $element?->canonicalId ?? $element?->id ?? '';
+        $anchorPrefix = $this->getAnchorPrefix();
+        $separator = $this->determineSeparator($anchorPrefix);
+
+        return $anchorPrefix . $separator . $matrixBlockId;
     }
 
     /**

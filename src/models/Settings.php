@@ -20,6 +20,7 @@ class Settings extends Model
     public function defineRules(): array
     {
         return [
+            ['anchorPrefix', 'required'],
             ['anchorPrefix', 'string'],
             ['anchorPrefix', 'validateAnchorPrefix'],
             [['allowCustomAnchors', 'useLegacySeparator'], 'boolean'],
@@ -39,7 +40,7 @@ class Settings extends Model
         }
 
         if (preg_match('/\s/', $value)) {
-            $this->addError($attribute, Craft::t('matrix-block-anchor', 'Anchor prefix must not contain spaces.'));
+            $this->addError($attribute, Craft::t('matrix-block-anchor', 'Anchor prefix must not contain whitespaces (spaces, tabs, etc.).'));
         }
     }
 }

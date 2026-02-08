@@ -12,18 +12,20 @@
   transition: opacity 250ms ease-in-out;
 }
 
-.clip-copy.success::after {
-  content: 'copied';
-  color: var(--success-color);
+.clip-copy.success::after,
+.clip-copy.error::after {
+  content: attr(data-message);
   opacity: 1;
-  padding: 2px 6px;
+}
+
+.clip-copy.success::after {
+  color: var(--success-color);
+  padding: 1px 6px 2px ;
   border: 1px solid var(--success-color);
   border-radius: 4px;
   background: #fff;
 }
 
 .clip-copy.error::after {
-  content: 'error';
   color: var(--error-color);
-  opacity: 1;
 }

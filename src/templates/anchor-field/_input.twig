@@ -6,15 +6,14 @@
 	  name: name,
 	  value: value,
 	  disabled: not allowCustomAnchors,
-	  placeholder: allowCustomAnchors ? '#my-custom-anchor' : null,
 	  instructions: allowCustomAnchors ? 'Enter a unique anchor ID. Must not start with a number or contain spaces.'|t('matrix-block-anchor') : null,
    }) }}
    {{ tag('a', {
 	  class: 'btn clip-copy',
-	  title: 'Copy to clipboard'|t,
+	  title: 'Copy to clipboard'|t('matrix-block-anchor'),
 	  href: 'javascript:void(0);',
 	  aria: {
-		 label: 'Copy to clipboard'|t
+		 label: 'Copy to clipboard'|t('matrix-block-anchor')
 	  },
 	  data: {
 		 icon: 'clipboard',
