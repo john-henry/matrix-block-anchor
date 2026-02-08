@@ -2,26 +2,75 @@
 
 {{ forms.lightswitchField({
    label: 'Allow Custom Anchors'|t('matrix-block-anchor'),
-   instructions: 'Enable this to allow users to enter their own custom anchor text instead of using the auto-generated anchors.'|t('matrix-block-anchor'),
+   instructions: 'Allow users to manually set an anchor instead of using the automatically generated one.'|t('matrix-block-anchor'),
    id: 'allowCustomAnchors',
    name: 'allowCustomAnchors',
    on: settings['allowCustomAnchors'] ?? false
 }) }}
 
+<h2>{{ 'Auto-Generated Anchor Settings'|t('matrix-block-anchor') }}</h2>
+
 {{ forms.textField({
-   label: (settings['allowCustomAnchors'] ?? false) ? 'Anchor Prefix (disabled)'|t('matrix-block-anchor') : 'Anchor Prefix'|t('matrix-block-anchor'),
-   instructions: 'Enter the desired Matrix block anchor prefix here.'|t('matrix-block-anchor'),
+   label: (settings['allowCustomAnchors'] ?? false) ? 'Anchor Prefix (fallback)'|t('matrix-block-anchor') : 'Anchor Prefix'|t('matrix-block-anchor'),
+   instructions: 'Sets the prefix used for auto-generated anchors. This is also used when no custom anchor is provided.'|t('matrix-block-anchor'),
    id: 'anchorPrefix',
    name: 'anchorPrefix',
    value: settings['anchorPrefix'],
-   disabled: settings['allowCustomAnchors'] ?? false,
    errors: settings.getErrors('anchorPrefix')
 }) }}
 
 {{ forms.lightswitchField({
    label: (settings['allowCustomAnchors'] ?? false) ? 'Use Legacy Separator (disabled)'|t('matrix-block-anchor') : 'Use Legacy Separator'|t('matrix-block-anchor'),
-   instructions: 'Enable this for backward compatibility with older plugin versions that always included a separator dash'|t('matrix-block-anchor'),
+   instructions: 'Use a dash (-) between the prefix and ID for compatibility with plugin versions v2.x and earlier.'|t('matrix-block-anchor'),
    name: 'useLegacySeparator',
    on: settings.useLegacySeparator,
    disabled: settings['allowCustomAnchors'] ?? false
 }) }}
+
+<hr>
+
+<h2>{{ 'Field Usage'|t('matrix-block-anchor') }}</h2>
+
+{% if fieldUsage is empty %}
+   <p>{{ 'The Matrix Block Anchor field is not currently used in any fields.'|t('matrix-block-anchor') }}</p>
+{% else %}
+   <p>{{ 'The Matrix Block Anchor field is used in the following locations:'|t('matrix-block-anchor') }}</p>
+
+   {% set groupedUsage = {} %}
+   {% for item in fieldUsage %}
+      {% set matrixFieldId = 'field_' ~ item.matrixField.id %}
+      {% if groupedUsage[matrixFieldId] is not defined %}
+         {% set groupedUsage = groupedUsage|merge({
+            (matrixFieldId): {
+               matrixField: item.matrixField,
+               matrixFieldUrl: item.matrixFieldUrl,
+               entryTypes: []
+            }
+         }) %}
+      {% endif %}
+      {% set currentGroup = groupedUsage[matrixFieldId] %}
+      {% set groupedUsage = groupedUsage|merge({
+         (matrixFieldId): {
+            matrixField: currentGroup.matrixField,
+            matrixFieldUrl: currentGroup.matrixFieldUrl,
+            entryTypes: currentGroup.entryTypes|merge([{
+               entryType: item.entryType,
+               entryTypeUrl: item.entryTypeUrl
+            }])
+         }
+      }) %}
+   {% endfor %}
+
+   <ul>
+      {% for matrixFieldId, data in groupedUsage %}
+         <li>
+            <strong><a href="{{ data.matrixFieldUrl }}">{{ data.matrixField.name }}</a></strong> (Matrix Field)
+            <ul>
+               {% for entryTypeData in data.entryTypes %}
+                  <li><a href="{{ entryTypeData.entryTypeUrl }}">{{ entryTypeData.entryType.name }}</a> (Entry Type)</li>
+               {% endfor %}
+            </ul>
+         </li>
+      {% endfor %}
+   </ul>
+{% endif %}

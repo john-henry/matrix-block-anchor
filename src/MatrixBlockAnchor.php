@@ -12,6 +12,8 @@ use Craft;
 use craft\base\Plugin as BasePlugin;
 
 use craft\events\RegisterComponentTypesEvent;
+use craft\fields\Matrix;
+use craft\models\EntryType;
 use craft\services\Fields;
 use craft\web\View;
 
@@ -81,7 +83,61 @@ class MatrixBlockAnchor extends BasePlugin
             'matrix-block-anchor/settings',
             [
                 'settings' => $this->getSettings(),
+                'fieldUsage' => $this->_getFieldUsage(),
             ]
         );
+    }
+
+    private function _getFieldUsage(): array
+    {
+        $usage = [];
+        $fieldsService = Craft::$app->getFields();
+        $entriesService = Craft::$app->getEntries();
+
+        // Find all MatrixBlockAnchorField instances
+        $anchorFields = $fieldsService->getFieldsByType(MatrixBlockAnchorField::class);
+
+        foreach ($anchorFields as $anchorField) {
+            // Get the field layouts that use this field
+            $layouts = $fieldsService->findFieldUsages($anchorField);
+
+            foreach ($layouts as $layout) {
+                // Try to find the entry type that owns this layout
+                $entryType = null;
+
+                // Search through all entry types to find one with matching field layout
+                foreach ($entriesService->getAllEntryTypes() as $et) {
+                    if ($et->getFieldLayout()->id === $layout->id) {
+                        $entryType = $et;
+                        break;
+                    }
+                }
+
+                if ($entryType) {
+                    // Find which Matrix field uses this entry type
+                    $matrixFields = $fieldsService->getFieldsByType(Matrix::class);
+
+                    foreach ($matrixFields as $matrixField) {
+                        $settings = $matrixField->settings;
+                        if (isset($settings['entryTypes'])) {
+                            foreach ($settings['entryTypes'] as $entryTypeConfig) {
+                                if (isset($entryTypeConfig['uid']) && $entryTypeConfig['uid'] === $entryType->uid) {
+                                    $usage[] = [
+                                        'anchorField' => $anchorField,
+                                        'matrixField' => $matrixField,
+                                        'entryType' => $entryType,
+                                        'matrixFieldUrl' => $matrixField->getCpEditUrl(),
+                                        'entryTypeUrl' => $entryType->getCpEditUrl(),
+                                    ];
+                                    break 2; // Break out of both loops once we find a match
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $usage;
     }
 }
