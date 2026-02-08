@@ -1,5 +1,17 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.1.0 - 2026-01-08
+
+### Changed
+- Changed how anchors are returned in template. If using custom anchors, then any anchor field not filled in will default to the Anchor Prefix from settings. ([#5](https://github.com/john-henry/matrix-block-anchor/issues/5))
+- Changed some field labels in settings to be more descriptive and concise
+- Made all text translatable
+- Updated README
+
+### Added
+- Added section to plugin settings for listing Field Usage
+- GitHub Workflow files for code quality
+
 ## 3.0.0 - 2025-11-09
 
 ### Added
