@@ -13,7 +13,6 @@ use craft\base\Plugin as BasePlugin;
 
 use craft\events\RegisterComponentTypesEvent;
 use craft\fields\Matrix;
-use craft\models\EntryType;
 use craft\services\Fields;
 use craft\web\View;
 

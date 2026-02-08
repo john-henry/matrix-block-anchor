@@ -42,6 +42,5 @@ class Settings extends Model
         if (preg_match('/\s/', $value)) {
             $this->addError($attribute, Craft::t('matrix-block-anchor', 'Anchor prefix must not contain whitespaces (spaces, tabs, etc.).'));
         }
-
     }
 }

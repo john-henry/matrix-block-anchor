@@ -374,5 +374,4 @@ class MatrixBlockAnchorField extends Field
     {
         return ltrim($value, '#');
     }
-
 }
