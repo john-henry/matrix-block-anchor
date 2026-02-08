@@ -33,16 +33,16 @@
         navigator.clipboard
           .writeText(txt.val())
           .then(() => {
-              $(el).addClass('success');
+              $(el).addClass('success').attr('data-message', Craft.t('matrix-block-anchor', 'copied'));
               setTimeout(() => {
-                  $(el).removeClass('success');
+                  $(el).removeClass('success').removeAttr('data-message');
               }, 1000);
 
           })
           .catch((err) => {
-              $(el).addClass('error');
+              $(el).addClass('error').attr('data-message', Craft.t('matrix-block-anchor', 'error'));
               setTimeout(() => {
-                  $(el).removeClass('error');
+                  $(el).removeClass('error').removeAttr('data-message');
               }, 1000);
 
               console.warn(err);
