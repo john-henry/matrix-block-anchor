@@ -252,7 +252,13 @@ class MatrixBlockAnchorField extends Field
                     return false;
                 }
 
-                if ($block->id === $currentElement->id) {
+                // Skip the current element - use object comparison for unsaved blocks
+                if ($block === $currentElement) {
+                    continue;
+                }
+
+                // Also skip if both have IDs and they match
+                if ($block->id && $currentElement->id && $block->id === $currentElement->id) {
                     continue;
                 }
 

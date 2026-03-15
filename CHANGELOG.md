@@ -1,5 +1,10 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.1.2 - 2026-03-15
+
+### Fixed
+- Fixed issue where unique anchor error was triggering for Card views in Matrix field. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6) 
+
 ## 3.1.1 - 2026-01-08
 
 ### Added
