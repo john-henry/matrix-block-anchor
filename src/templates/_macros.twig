@@ -1,0 +1,12 @@
+{% macro configWarning(setting) -%}
+    {{ "This is being overridden by the `{setting}` config setting."|t('matrix-block-anchor', {setting: setting })|markdown(inlineOnly=true) }}
+    {%- if setting == 'anchorPrefix' or setting == 'allowCustomAnchors' %} {{ 'Changing this will break any existing links that point to auto-generated/custom anchors.'|t('matrix-block-anchor') }}{% endif %}
+{%- endmacro %}
+
+{% macro configTip(fieldType) -%}
+    {% if fieldType == 'booleanMenuField' %}
+        {{ 'This can be set to an environment variable with a boolean value (<code>yes</code>/<code>no</code>/<code>true</code>/<code>false</code>/<code>on</code>/<code>off</code>/<code>0</code>/<code>1</code>).'|t('matrix-block-anchor')|markdown(inlineOnly=true) }}
+    {% elseif fieldType == 'autosuggestField' %}
+        {{ 'This can be set to an environment variable.'|t('matrix-block-anchor')|markdown(inlineOnly=true) }}
+    {% endif %}
+{%- endmacro %}

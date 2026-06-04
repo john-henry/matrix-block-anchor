@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * @copyright Copyright (c) John Henry Donovan
  */
@@ -12,8 +10,9 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\base\NestedElementInterface;
+use craft\base\PreviewableFieldInterface;
+use craft\elements\Entry;
 use craft\errors\InvalidFieldException;
-use craft\fields\Matrix;
 use johnhenry\matrixblockanchor\MatrixBlockAnchor;
 use Twig\Error\LoaderError;
 use Twig\Error\RuntimeError;
@@ -30,39 +29,66 @@ use yii\base\InvalidConfigException;
  * @property-read bool $allowCustomAnchors Whether custom anchors are allowed
  * @property-read array[] $elementValidationRules Validation rules for the field
  * @property-read string $anchorPrefix The prefix to use for anchor IDs
+ *
+ * @author John Henry Donovan <info@johnhenry.ie>
+ * @since 1.0.0
  */
-class MatrixBlockAnchorField extends Field
+class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
 {
+    // =========================================================================
+    // Constants
+    // =========================================================================
+
     /**
      * Template path for rendering the field input
+     *
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public const TEMPLATE_PATH = 'matrix-block-anchor/anchor-field/_input';
 
     /**
      * Maximum length for anchor IDs
+     *
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private const MAX_ANCHOR_LENGTH = 100;
 
     /**
      * Maximum number of blocks to check for duplicates
+     *
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private const MAX_BLOCKS_TO_CHECK = 1000;
 
+    // =========================================================================
+    // Static Methods
+    // =========================================================================
 
     /**
      * Returns the display name of the field type
      *
      * @return string The human-readable field type name
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public static function displayName(): string
     {
         return 'Matrix Block Anchor';
     }
 
+    // =========================================================================
+    // Public Methods
+    // =========================================================================
+
     /**
      * Gets the anchor prefix from plugin settings
      *
      * @return string The configured anchor prefix
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public function getAnchorPrefix(): string
     {
@@ -73,10 +99,12 @@ class MatrixBlockAnchorField extends Field
      * Checks if custom anchors are allowed from plugin settings
      *
      * @return bool True if custom anchors are allowed, false otherwise
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public function getAllowCustomAnchors(): bool
     {
-        return MatrixBlockAnchor::getInstance()->getSettings()->allowCustomAnchors ?? false;
+        return MatrixBlockAnchor::getInstance()->getSettings()->getAllowCustomAnchors();
     }
 
     /**
@@ -87,6 +115,8 @@ class MatrixBlockAnchorField extends Field
      * @param mixed $value The raw field value
      * @param ElementInterface|null $element The element the field is associated with
      * @return string The anchor value without hash prefix
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public function normalizeValue(mixed $value, ?ElementInterface $element = null): string
     {
@@ -109,6 +139,8 @@ class MatrixBlockAnchorField extends Field
      * Gets the validation rules for the field
      *
      * @return array<int, array<int, string>> Array of validation rule definitions
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public function getElementValidationRules(): array
     {
@@ -130,6 +162,8 @@ class MatrixBlockAnchorField extends Field
      * @return void
      * @throws InvalidFieldException
      * @throws InvalidConfigException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public function validateAnchorId(ElementInterface $element): void
     {
@@ -153,6 +187,8 @@ class MatrixBlockAnchorField extends Field
      * @param ElementInterface $element The element being validated
      * @param string $anchorId The anchor ID to validate
      * @return bool True if the format is valid, false otherwise
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private function isValidAnchorFormat(ElementInterface $element, string $anchorId): bool
     {
@@ -196,9 +232,15 @@ class MatrixBlockAnchorField extends Field
      * @param string $anchorId The anchor ID to check for uniqueness
      * @return void
      * @throws InvalidConfigException|InvalidFieldException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private function validateUniqueAnchor(ElementInterface $element, string $anchorId): void
     {
+        if ($element->getIsRevision()) {
+            return;
+        }
+
         if (!($element instanceof NestedElementInterface)) {
             return;
         }
@@ -211,6 +253,20 @@ class MatrixBlockAnchorField extends Field
         $fieldLayout = $owner->getFieldLayout();
         if (!$fieldLayout) {
             return;
+        }
+
+        // For draft saves: if the anchor matches what's stored in the canonical,
+        // it hasn't changed — skip uniqueness check to avoid false duplicate errors on resave.
+        // Only applies to drafts; for canonical elements getCanonical() returns $this,
+        // which would always match, so we exclude that case.
+        if (!$element->getIsCanonical()) {
+            $canonical = $element->getCanonical();
+            if ($canonical) { // @phpstan-ignore-line
+                $stored = $this->removeHashPrefix($canonical->getFieldValue($this->handle) ?? '');
+                if ($stored === $anchorId) {
+                    return;
+                }
+            }
         }
 
         if ($this->hasDuplicateAnchorInOwner($owner, $element, $anchorId)) {
@@ -229,42 +285,46 @@ class MatrixBlockAnchorField extends Field
      * @param string $anchorId The anchor ID to check for duplicates
      * @return bool True if a duplicate is found, false otherwise
      * @throws InvalidFieldException|InvalidConfigException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private function hasDuplicateAnchorInOwner(ElementInterface $owner, ElementInterface $currentElement, string $anchorId): bool
     {
-        $customFields = $owner->getFieldLayout()?->getCustomFields() ?? [];
+        /** @var ElementInterface|null $canonicalOwner */
+        $canonicalOwner = $owner->getIsCanonical() ? $owner : $owner->getCanonical();
+        if (!$canonicalOwner) {
+            return false;
+        }
+
+        $currentCanonicalId = $currentElement->getIsCanonical()
+            ? $currentElement->id
+            : ($currentElement->getCanonical()?->id ?? $currentElement->id);
+
+        // Query blocks directly by primaryOwner to bypass field-layout caches on the
+        // owner object, which are frequently stale during validation.
+        $blocks = Entry::find()
+            ->primaryOwner($canonicalOwner)
+            ->status(null)
+            ->limit(self::MAX_BLOCKS_TO_CHECK)
+            ->all();
+
         $blocksChecked = 0;
 
-        foreach ($customFields as $field) {
-            if (!($field instanceof Matrix)) {
+        foreach ($blocks as $block) {
+            if (++$blocksChecked > self::MAX_BLOCKS_TO_CHECK) {
+                Craft::warning(
+                    "Anchor uniqueness check stopped after {$blocksChecked} blocks for performance",
+                    __METHOD__
+                );
+                return false;
+            }
+
+            if ($block->id === $currentCanonicalId) {
                 continue;
             }
 
-            $blocks = $owner->getFieldValue($field->handle)->all();
-
-            foreach ($blocks as $block) {
-                // Prevent resource exhaustion (CWE-400)
-                if (++$blocksChecked > self::MAX_BLOCKS_TO_CHECK) {
-                    Craft::warning(
-                        "Anchor uniqueness check stopped after {$blocksChecked} blocks for performance",
-                        __METHOD__
-                    );
-                    return false;
-                }
-
-                // Skip the current element - use object comparison for unsaved blocks
-                if ($block === $currentElement) {
-                    continue;
-                }
-
-                // Also skip if both have IDs and they match
-                if ($block->id && $currentElement->id && $block->id === $currentElement->id) {
-                    continue;
-                }
-
-                if ($this->blockHasMatchingAnchor($block, $anchorId)) {
-                    return true;
-                }
+            if ($this->blockHasMatchingAnchor($block, $anchorId)) {
+                return true;
             }
         }
 
@@ -279,6 +339,8 @@ class MatrixBlockAnchorField extends Field
      * @param string $anchorId The anchor ID to match
      * @return bool True if the block has a matching anchor, false otherwise
      * @throws InvalidFieldException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private function blockHasMatchingAnchor(ElementInterface $block, string $anchorId): bool
     {
@@ -310,6 +372,8 @@ class MatrixBlockAnchorField extends Field
      * @throws LoaderError If the template cannot be loaded
      * @throws RuntimeError If there's a runtime error in the template
      * @throws SyntaxError If there's a syntax error in the template
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     public function getInputHtml(mixed $value, ?ElementInterface $element = null): string
     {
@@ -330,16 +394,54 @@ class MatrixBlockAnchorField extends Field
         );
     }
     /**
+     * Returns the HTML displayed in the element index preview column.
+     *
+     * @param mixed $value The normalised field value
+     * @param ElementInterface $element The element the field belongs to
+     * @return string The preview HTML, or an empty string when no value is set
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    public function getPreviewHtml(mixed $value, ElementInterface $element): string
+    {
+        if (!$value) {
+            return '';
+        }
+        return '<code>' . htmlspecialchars('#' . ltrim($value, '#')) . '</code>';
+    }
+
+    /**
+     * Returns placeholder HTML shown in the preview column when no value is stored.
+     *
+     * @param mixed $value The normalised field value
+     * @param ElementInterface|null $element The element the field belongs to
+     * @return string The placeholder HTML
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    public function previewPlaceholderHtml(mixed $value, ?ElementInterface $element): string
+    {
+        $prefix = $this->getAnchorPrefix();
+        return '<code>#' . htmlspecialchars($prefix) . '…</code>';
+    }
+
+    // =========================================================================
+    // Private Methods
+    // =========================================================================
+
+    /**
      * Determines the separator to use between prefix and block ID
      *
      * @param string $anchorPrefix The anchor prefix
      * @return string The separator character
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 2.0.0
      */
     private function determineSeparator(string $anchorPrefix): string
     {
         $settings = MatrixBlockAnchor::getInstance()->getSettings();
 
-        if ($settings->useLegacySeparator ?? false) {
+        if ($settings->getUseLegacySeparator()) {
             return '-';
         }
 
@@ -355,6 +457,8 @@ class MatrixBlockAnchorField extends Field
      * @param mixed $matrixBlockId The matrix block ID
      * @param bool $allowCustomAnchors Whether custom anchors are allowed
      * @return string The formatted display value with hash prefix
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private function generateDisplayValue(
         mixed $value,
@@ -375,6 +479,8 @@ class MatrixBlockAnchorField extends Field
      *
      * @param string $value The value to process
      * @return string The value without the hash prefix
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
      */
     private function removeHashPrefix(string $value): string
     {

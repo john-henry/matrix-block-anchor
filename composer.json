@@ -2,7 +2,7 @@
   "name": "johnhenry/matrix-block-anchor",
   "description": "Anchor field that allows a user to copy a link to the ID of a Matrix block",
   "type": "craft-plugin",
-  "version": "3.1.2",
+  "version": "3.2.0",
   "keywords": [
     "craft",
     "cms",
@@ -11,43 +11,55 @@
     "matrix",
     "anchor"
   ],
-  "license": "proprietary",
-  "support": {
-    "email": "info@johnhenry.ie"
-  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "John Henry",
+      "homepage": "https://johnhenry.ie"
+    }
+  ],
   "require": {
-    "php": ">=8.2",
-    "craftcms/cms": "^5.0.0"
+    "php": "^8.2 || ^8.3 || ^8.4",
+    "craftcms/cms": "^5.0"
   },
   "require-dev": {
     "craftcms/ecs": "dev-main",
     "craftcms/phpstan": "dev-main"
   },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
   "autoload": {
     "psr-4": {
       "johnhenry\\matrixblockanchor\\": "src/"
     }
   },
-  "extra": {
-    "handle": "matrix-block-anchor",
-    "name": "Matrix Block Anchor",
-    "class": "johnhenry\\matrixblockanchor\\MatrixBlockAnchor",
-    "developer": "John Henry Donovan",
-    "documentationUrl": "https://plugins.johnhenry.ie/matrix-block-anchor/"
-  },
   "scripts": {
+    "phpstan": "phpstan --ansi --memory-limit=1G",
     "check-cs": "ecs check --ansi",
-    "fix-cs": "ecs check --ansi --fix",
-    "phpstan": "phpstan --memory-limit=1G"
+    "fix-cs": "ecs check --fix --ansi"
   },
   "config": {
-    "sort-packages": true,
-    "platform": {
-      "php": "8.2"
-    },
     "allow-plugins": {
-      "yiisoft/yii2-composer": true,
-      "craftcms/plugin-installer": true
-    }
+      "craftcms/plugin-installer": true,
+      "pestphp/pest-plugin": true,
+      "yiisoft/yii2-composer": true
+    },
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "support": {
+    "docs": "https://plugins.johnhenry.ie/matrix-block-anchor",
+    "source": "https://github.com/john-henry/matrix-block-anchor",
+    "issues": "https://github.com/john-henry/matrix-block-anchor/issues"
+  },
+  "extra": {
+    "name": "Matrix Block Anchor",
+    "handle": "matrix-block-anchor",
+    "developer": "John Henry",
+    "developerUrl": "https://johnhenry.ie",
+    "documentationUrl": "https://plugins.johnhenry.ie/matrix-block-anchor/",
+    "changelogUrl": "https://raw.githubusercontent.com/john-henry/matrix-block-anchor/craft-5/CHANGELOG.md",
+    "class": "johnhenry\\matrixblockanchor\\MatrixBlockAnchor"
   }
+
 }
