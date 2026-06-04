@@ -58,8 +58,7 @@
     "developer": "John Henry",
     "developerUrl": "https://johnhenry.ie",
     "documentationUrl": "https://plugins.johnhenry.ie/matrix-block-anchor/",
-    "changelogUrl": "https://raw.githubusercontent.com/john-henry/matrix-block-anchor/craft-5/CHANGELOG.md",
+    "changelogUrl": "https://github.com/john-henry/matrix-block-anchor/blob/craft-5/CHANGELOG.md",
     "class": "johnhenry\\matrixblockanchor\\MatrixBlockAnchor"
   }
-
 }

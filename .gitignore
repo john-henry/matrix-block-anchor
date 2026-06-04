@@ -9,6 +9,3 @@
 # Vitepress
 docs/.vitepress/dist
 docs/.vitepress/cache
-
-# Test artifacts
-tests/test-results.xml
