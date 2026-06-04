@@ -1,9 +1,23 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.2.0 - 2026-06-04
+
+### Added
+- Added card preview attribute
+- Added some Pest testing
+
+### Changed
+- Added new branding
+- Tidied up plugin settings page with better messaging
+- Made plugin architecture consistent with my other plugins
+
+### Fixed
+- _**Really**_ fixed issue where unique anchor error was triggering for Card views in Matrix field. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
+
 ## 3.1.2 - 2026-03-15
 
 ### Fixed
-- Fixed issue where unique anchor error was triggering for Card views in Matrix field. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6) 
+- Fixed issue where unique anchor error was triggering for Card views in Matrix field. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
 
 ## 3.1.1 - 2026-01-08
 
@@ -21,6 +35,7 @@
 ### Added
 - Added section to plugin settings for listing Field Usage
 - GitHub Workflow files for code quality
+
 
 ## 3.0.0 - 2025-11-09
 

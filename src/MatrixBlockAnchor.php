@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * @copyright Copyright (c) John Henry Donovan
  */
@@ -25,18 +23,53 @@ use yii\base\Event;
 /**
  * Matrix Block Anchor plugin
  *
+ * Provides a custom field type for adding unique, stable anchor IDs to Craft
+ * matrix blocks, enabling deep-linking to individual blocks on a page.
+ *
  * @method static MatrixBlockAnchor getInstance()
+ * @method Settings getSettings()
+ *
  * @author John Henry Donovan <info@johnhenry.ie>
- * @copyright John Henry Donovan
- * @license https://craftcms.github.io/license/ Craft License
+ * @since 1.0.0
  */
 class MatrixBlockAnchor extends BasePlugin
 {
+    // =========================================================================
+    // Properties
+    // =========================================================================
+
+    /**
+     * @var bool Whether the plugin has a CP section
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     public bool $hasCpSection = false;
+
+    /**
+     * @var bool Whether the plugin has CP settings
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     public bool $hasCpSettings = true;
+
+    /**
+     * @var string The plugin schema version
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     public string $schemaVersion = '1.0.0';
 
+    // =========================================================================
+    // Public Methods
+    // =========================================================================
 
+    /**
+     * Initialises the plugin, registering the field type and CP assets.
+     *
+     * @return void
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     public function init(): void
     {
         parent::init();
@@ -45,7 +78,59 @@ class MatrixBlockAnchor extends BasePlugin
         $this->_registerAssets();
     }
 
+    // =========================================================================
+    // Protected Methods
+    // =========================================================================
 
+    /**
+     * Creates the settings model for this plugin.
+     *
+     * @return Settings The settings model instance
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    protected function createSettingsModel(): models\Settings
+    {
+        return new Settings();
+    }
+
+    /**
+     * Renders the settings page HTML.
+     *
+     * @return string The rendered settings template
+     * @throws \Twig\Error\LoaderError If the template cannot be loaded
+     * @throws \Twig\Error\RuntimeError If there is a runtime error in the template
+     * @throws \Twig\Error\SyntaxError If there is a syntax error in the template
+     * @throws \yii\base\Exception If the view cannot render the template
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    protected function settingsHtml(): string
+    {
+        return Craft::$app->view->renderTemplate(
+            'matrix-block-anchor/settings',
+            [
+                'settings' => $this->getSettings(),
+                'config' => array_filter(
+                    Craft::$app->config->getConfigFromFile('matrix-block-anchor'),
+                    fn($value) => $value !== null
+                ),
+                'fieldUsage' => $this->_getFieldUsage(),
+            ]
+        );
+    }
+
+    // =========================================================================
+    // Private Methods
+    // =========================================================================
+
+    /**
+     * Registers the MatrixBlockAnchorField field type with Craft.
+     *
+     * @return void
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     private function _registerField(): void
     {
         Event::on(
@@ -56,8 +141,19 @@ class MatrixBlockAnchor extends BasePlugin
             });
     }
 
+    /**
+     * Registers the CP asset bundle on every CP template render.
+     *
+     * @return void
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     private function _registerAssets(): void
     {
+        if (Craft::$app instanceof \craft\console\Application) {
+            return;
+        }
+
         Event::on(
             View::class,
             View::EVENT_BEFORE_RENDER_TEMPLATE,
@@ -70,23 +166,17 @@ class MatrixBlockAnchor extends BasePlugin
         );
     }
 
-    protected function createSettingsModel(): models\Settings
-    {
-        return new Settings();
-    }
-
-
-    protected function settingsHtml(): string
-    {
-        return Craft::$app->view->renderTemplate(
-            'matrix-block-anchor/settings',
-            [
-                'settings' => $this->getSettings(),
-                'fieldUsage' => $this->_getFieldUsage(),
-            ]
-        );
-    }
-
+    /**
+     * Builds a list of all anchor field usages across Matrix fields and entry types.
+     *
+     * Iterates all MatrixBlockAnchorField instances, resolves the field layouts they
+     * belong to, and maps each back to its owning Matrix field and entry type for
+     * display on the settings page.
+     *
+     * @return array<int, array{anchorField: MatrixBlockAnchorField, matrixField: Matrix, entryType: \craft\models\EntryType, matrixFieldUrl: string|null, entryTypeUrl: string|null}> Usage map entries
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
     private function _getFieldUsage(): array
     {
         $usage = [];
@@ -97,6 +187,7 @@ class MatrixBlockAnchor extends BasePlugin
         $anchorFields = $fieldsService->getFieldsByType(MatrixBlockAnchorField::class);
 
         foreach ($anchorFields as $anchorField) {
+            assert($anchorField instanceof MatrixBlockAnchorField);
             // Get the field layouts that use this field
             $layouts = $fieldsService->findFieldUsages($anchorField);
 
@@ -117,6 +208,7 @@ class MatrixBlockAnchor extends BasePlugin
                     $matrixFields = $fieldsService->getFieldsByType(Matrix::class);
 
                     foreach ($matrixFields as $matrixField) {
+                        assert($matrixField instanceof Matrix);
                         $settings = $matrixField->settings;
                         if (isset($settings['entryTypes'])) {
                             foreach ($settings['entryTypes'] as $entryTypeConfig) {
