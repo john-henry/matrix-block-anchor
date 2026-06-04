@@ -28,7 +28,6 @@ Matrix Block Anchor is a Craft CMS field that enables content editors to create 
 ## Documentation
 Full Documentation can be found at [https://plugins.johnhenry.ie/matrix-block-anchor/](https://plugins.johnhenry.ie/matrix-block-anchor/)
 
-
 ## Support
 For support, please visit our [GitHub Issues page](https://github.com/john-henry/craft-pricing-rules-relationship/issues)
 
