@@ -107,12 +107,12 @@ class MatrixBlockAnchor extends BasePlugin
      */
     protected function settingsHtml(): string
     {
-        return Craft::$app->view->renderTemplate(
+        return Craft::$app->getView()->renderTemplate(
             'matrix-block-anchor/settings',
             [
                 'settings' => $this->getSettings(),
                 'config' => array_filter(
-                    Craft::$app->config->getConfigFromFile('matrix-block-anchor'),
+                    Craft::$app->getConfig()->getConfigFromFile('matrix-block-anchor'),
                     fn($value) => $value !== null
                 ),
                 'fieldUsage' => $this->_getFieldUsage(),

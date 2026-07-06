@@ -1,8 +1,8 @@
 {
   "name": "johnhenry/matrix-block-anchor",
-  "description": "Anchor field that allows a user to copy a link to the ID of a Matrix block",
+  "description": "Give editors copy-ready anchor links straight to Matrix blocks, auto-generated or custom, no developer required.",
   "type": "craft-plugin",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "keywords": [
     "craft",
     "cms",
@@ -48,7 +48,7 @@
     "sort-packages": true
   },
   "support": {
-    "docs": "https://plugins.johnhenry.ie/matrix-block-anchor",
+    "docs": "https://johnhenry.ie/plugins/matrix-block-anchor/",
     "source": "https://github.com/john-henry/matrix-block-anchor",
     "issues": "https://github.com/john-henry/matrix-block-anchor/issues"
   },
@@ -57,7 +57,7 @@
     "handle": "matrix-block-anchor",
     "developer": "John Henry",
     "developerUrl": "https://johnhenry.ie",
-    "documentationUrl": "https://plugins.johnhenry.ie/matrix-block-anchor/",
+    "documentationUrl": "https://johnhenry.ie/plugins/matrix-block-anchor/",
     "changelogUrl": "https://github.com/john-henry/matrix-block-anchor/blob/craft-5/CHANGELOG.md",
     "class": "johnhenry\\matrixblockanchor\\MatrixBlockAnchor"
   }

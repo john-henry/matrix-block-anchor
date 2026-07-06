@@ -139,4 +139,16 @@ describe('Settings getters', function() {
 
         expect($settings->getUseLegacySeparator(true))->toBeFalse();
     });
+
+    it('getUseLegacySeparator returns the raw env-var string when parse is false', function() {
+        $settings = new Settings(['anchorPrefix' => 'block', 'useLegacySeparator' => '$MY_ENV_VAR']);
+
+        expect($settings->getUseLegacySeparator(false))->toBe('$MY_ENV_VAR');
+    });
+
+    it('getAllowCustomAnchors returns the raw env-var string when parse is false', function() {
+        $settings = new Settings(['anchorPrefix' => 'block', 'allowCustomAnchors' => '$MY_ENV_VAR']);
+
+        expect($settings->getAllowCustomAnchors(false))->toBe('$MY_ENV_VAR');
+    });
 });

@@ -1,7 +1,7 @@
 # Contributing
 Thanks for taking the time to contribute! I really appreciate it.
 
-The following is a set of guidelines for contributing to any of my [plugins](https://plugins.johnhenry.ie). These are just guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in an issue or pull request.
+The following is a set of guidelines for contributing to any of my [plugins](https://johnhenry.ie/plugins). These are just guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in an issue or pull request.
 
 #### Table of Contents
 - [Contributing](#contributing)
