@@ -66,6 +66,30 @@ describe('MatrixBlockAnchorField::getPreviewHtml()', function() {
 
         expect($field->getPreviewHtml('#my-anchor', $element))->toBe('<code>#my-anchor</code>');
     });
+
+    it('escapes HTML in the value so the preview can\'t inject markup', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $element = Closure::bind(
+            fn() => $this->createMock(\craft\base\Element::class),
+            $this,
+            \PHPUnit\Framework\TestCase::class
+        )();
+
+        expect($field->getPreviewHtml('<b>x</b>', $element))->toBe('<code>#&lt;b&gt;x&lt;/b&gt;</code>');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// previewPlaceholderHtml
+// ---------------------------------------------------------------------------
+
+describe('MatrixBlockAnchorField::previewPlaceholderHtml()', function() {
+    it('shows the prefix with a trailing ellipsis', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $prefix = MatrixBlockAnchor::getInstance()->getSettings()->anchorPrefix;
+
+        expect($field->previewPlaceholderHtml('', null))->toBe('<code>#' . $prefix . '…</code>');
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -95,6 +119,40 @@ describe('MatrixBlockAnchorField::normalizeValue() auto-generation', function() 
         $prefix = $this->settings->anchorPrefix;
 
         expect($field->normalizeValue('my-custom-anchor', null))->toBe($prefix);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeValue — legacy separator
+// ---------------------------------------------------------------------------
+
+describe('MatrixBlockAnchorField::normalizeValue() legacy separator', function() {
+    beforeEach(function() {
+        $this->settings = MatrixBlockAnchor::getInstance()->getSettings();
+        $this->origAllowCustomAnchors = $this->settings->allowCustomAnchors;
+        $this->origUseLegacySeparator = $this->settings->useLegacySeparator;
+        $this->settings->allowCustomAnchors = false;
+    });
+
+    afterEach(function() {
+        $this->settings->allowCustomAnchors = $this->origAllowCustomAnchors;
+        $this->settings->useLegacySeparator = $this->origUseLegacySeparator;
+    });
+
+    it('appends a hyphen between the prefix and block ID when enabled', function() {
+        $this->settings->useLegacySeparator = true;
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $prefix = $this->settings->anchorPrefix;
+
+        expect($field->normalizeValue(null, null))->toBe($prefix . '-');
+    });
+
+    it('omits the separator when disabled', function() {
+        $this->settings->useLegacySeparator = false;
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $prefix = $this->settings->anchorPrefix;
+
+        expect($field->normalizeValue(null, null))->toBe($prefix);
     });
 });
 
@@ -132,6 +190,65 @@ describe('MatrixBlockAnchorField::normalizeValue() custom anchors', function() {
         $result = $field->normalizeValue('', null);
 
         expect(str_starts_with($result, $prefix))->toBeTrue();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeValue — sanitization on write paths that bypass validateAnchorId()
+//
+// validateAnchorId() only runs via Element::afterValidate() for the editable
+// CP save scenario. Feed Me imports, console resaves, and any programmatic
+// setFieldValue() + saveElement() call can bypass it entirely, so
+// normalizeValue() must sanitize unconditionally to hold the safe-character
+// invariant regardless of write path.
+// ---------------------------------------------------------------------------
+
+describe('MatrixBlockAnchorField::normalizeValue() unconditional sanitization', function() {
+    beforeEach(function() {
+        $this->settings = MatrixBlockAnchor::getInstance()->getSettings();
+        $this->origAllowCustomAnchors = $this->settings->allowCustomAnchors;
+        $this->settings->allowCustomAnchors = true;
+    });
+
+    afterEach(function() {
+        $this->settings->allowCustomAnchors = $this->origAllowCustomAnchors;
+    });
+
+    it('strips disallowed characters from an unsanitized value', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+
+        expect($field->normalizeValue('my anchor!<script>', null))->toBe('myanchorscript');
+    });
+
+    it('strips leading non-letter characters so the result still starts with a letter', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+
+        expect($field->normalizeValue('123-invalid', null))->toBe('invalid');
+    });
+
+    it('falls back to auto-generation when sanitization leaves nothing safe', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $prefix = $this->settings->anchorPrefix;
+
+        $result = $field->normalizeValue('123 456 !!!', null);
+
+        expect(str_starts_with($result, $prefix))->toBeTrue();
+    });
+
+    it('leaves an already-safe value untouched', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+
+        expect($field->normalizeValue('Section_1-intro', null))->toBe('Section_1-intro');
+    });
+
+    it('falls back to auto-generation on non-string input instead of crashing', function() {
+        // Craft hands raw request input to normalizeValue(), so a crafted array body param
+        // (fields[handle][]=x) must not reach the string-typed helpers and throw a TypeError.
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $prefix = $this->settings->anchorPrefix;
+
+        expect($field->normalizeValue(['x'], null))->toBe($prefix)
+            ->and($field->normalizeValue(['foo' => 'bar'], null))->toBe($prefix);
     });
 });
 

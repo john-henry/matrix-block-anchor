@@ -1,47 +1,49 @@
-[![Stable Version](https://img.shields.io/packagist/v/johnhenry/matrix-block-anchor?label=stable&style=for-the-badge)]((https://packagist.org/packages/johnhenry/matrix-block-anchor))
+[![Stable Version](https://img.shields.io/packagist/v/johnhenry/matrix-block-anchor?label=stable&style=for-the-badge)](https://packagist.org/packages/johnhenry/matrix-block-anchor)
 [![Static Badge](https://img.shields.io/badge/free-plugin?style=for-the-badge&logo=craftcms&logoColor=white&logoSize=auto&label=Craft%20Plugin%20Store&labelColor=%23E5422B)](https://plugins.craftcms.com/matrix-block-anchor?craft5)
 
-<p align="center" style="margin-top:100px"><img width="120" height="120" alt="matrix-block-anchor-plugin-icon" src="https://plugins.johnhenry.ie/icons/matrix-block-anchor.svg"></p>
+<p align="center" style="margin-top:100px"><img width="120" height="120" alt="matrix-block-anchor-plugin-icon" src="https://johnhenry.ie/images/plugins/matrix-block-anchor.svg"></p>
 
 <h1 align="center">Matrix Block Anchor for Craft CMS</h1>
 
-Matrix Block Anchor is a Craft CMS field that enables content editors to create anchor links directly to Matrix Blocks without needing developer assistance. It automatically retrieves the Matrix Block ID, allowing editors to easily copy the link and use it anywhere.
+Matrix Block Anchor gives your editors anchor links straight to Matrix Blocks, no developer required. It grabs the block ID itself, sticks a copy button beside it, and that's your job done.
 
 ## Features
-- **Automatic Anchor Generation** – Automatically retrieves Matrix Block IDs and generates anchor links without any developer intervention
-- **Custom Anchor Support** – Allow editors to create meaningful, human-readable anchor IDs (like `#about-us` or `#pricing-section`) instead of auto-generated ones (Craft CMS 5)
-- **SEO-Friendly** - Custom anchors improve SEO with descriptive anchor text and maintain consistent links even when content is reordered (Craft CMS 5)
-- **Configurable Prefix** – Customize the anchor ID prefix (default: `blockIdAnchor`) to match your naming conventions
-- **Validation Built-in** - Ensures anchor IDs don't start with numbers, contain spaces, or duplicate existing anchors within an entry (Craft CMS 5)
-- **Easy Integration** – Works seamlessly with Matrix page builders – just add the field to any Matrix block type
-- **Copy to Clipboard** - One-click copying of anchor links for editors to use anywhere on the site
-- **Legacy Support** – Backward compatibility option for users upgrading from older plugin versions to prevent broken links (Craft CMS 5)
+- **Automatic Anchor Generation** – Grabs the Matrix Block ID and builds the anchor for you, no developer required
+- **Custom Anchor Support** – Let editors set their own readable anchors (`#about-us`, `#pricing-section`) instead of the auto-generated ones
+- **SEO-Friendly** - Descriptive anchor text helps your SEO, and the links stay put even when content gets reordered
+- **Configurable Prefix** – Change the anchor prefix (`blockIdAnchor` by default) to whatever suits your own conventions
+- **Validation Built-in** - Anchor IDs must start with a letter, contain only valid characters, and stay unique within an entry
+- **Easy Integration** – Drops straight into any Matrix block type, no fuss
+- **Copy to Clipboard** - One click and the link's on the clipboard, ready to paste wherever it's needed
+- **Legacy Support** – A setting for anyone upgrading from an older version, so your existing links don't break
 
 
 ## Perfect For
 - Matrix-based page builders
-- Long-form content with table of contents navigation
-- Single-page websites with section navigation
-- Documentation and help centers
+- Long-form content with a table of contents
+- Single-page sites with section navigation
+- Documentation and help centres
 - Landing pages with anchor-based navigation
 
 ## Documentation
-Full Documentation can be found at [https://plugins.johnhenry.ie/matrix-block-anchor/](https://plugins.johnhenry.ie/matrix-block-anchor/)
-
-## Support
-For support, please visit our [GitHub Issues page](https://github.com/john-henry/craft-pricing-rules-relationship/issues)
-
-## License
-
-This package is licensed for free under the MIT License.
+Full Documentation can be found at [https://johnhenry.ie/plugins/matrix-block-anchor/](https://johnhenry.ie/plugins/matrix-block-anchor/)
 
 ## Requirements
 
 - Craft CMS 5.0 or later
 - PHP 8.2 or later.
 
+## Support
+For support, please visit our [GitHub Issues page](https://github.com/john-henry/matrix-block-anchor/issues)
+
+## License
+
+This package is licensed for free under the MIT License.
+
+
+
 ---
 
-<a href="https://plugins.johnhenry.ie" target="_blank">
-    <img height="46" src="https://plugins.johnhenry.ie/images/logo.svg" alt="John Henry - Craft CMS Plugins">
+<a href="https://johnhenry.ie/plugins/" target="_blank">
+    <img height="46" src="https://johnhenry.ie/images/plugins/logo.svg" alt="John Henry - Craft CMS Plugins">
 </a>

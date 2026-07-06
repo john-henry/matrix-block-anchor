@@ -1,5 +1,16 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.3.0 - 2026-07-05
+
+### Fixed
+- Saving a block no longer throws a server error if the anchor value comes through in an unexpected shape; it falls back to the auto-generated anchor instead.
+- Anchors created through imports or other non-CP tools (Feed Me, console commands, and the like) are now cleaned up the same way as anchors typed directly into the field, so an invalid anchor can no longer get through.
+- Fixed the copy button briefly stopping every other block's copy button from working after you'd used one - each block's button now works independently.
+- The copy control is a proper button now, not a link styled to look like one, so keyboard users and screen readers get consistent behaviour.
+- Copying an anchor now gets announced to screen readers, not just shown visually.
+- Added a visible focus outline on the copy button for keyboard navigation.
+- Large entries with hundreds of Matrix blocks now log a warning if the duplicate-anchor check can't scan all of them, so an uncaught duplicate on a very large entry is easier to track down.
+
 ## 3.2.0 - 2026-06-04
 
 ### Added
@@ -49,8 +60,8 @@
 ### Changed
 - Auto-generated anchors now don't include a uneditable separator dash
 
-### Migration Notes
-If upgrading from v2.x or earlier and you have existing anchors using the format `#blockIdAnchor-123`, enable the "Use Legacy Separator" setting in the plugin configuration to maintain the same format and prevent broken links.
+> [!NOTE]
+> If upgrading from v2.x or earlier and you have existing anchors using the format `#blockIdAnchor-123`, enable the "Use Legacy Separator" setting in the plugin configuration to maintain the same format and prevent broken links.
 
 ## 2.0.1 - 2024-09-09
 
@@ -59,5 +70,5 @@ If upgrading from v2.x or earlier and you have existing anchors using the format
 - Craft 5 support.
 - Github Workflow files
 
-## 1.0.0
+## 1.0.0 - 2024-08-19
 - Initial release
