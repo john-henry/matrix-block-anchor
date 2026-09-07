@@ -273,8 +273,8 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
         if (!$element->getIsCanonical()) {
             $canonical = $element->getCanonical();
             if ($canonical) { // @phpstan-ignore-line
-                $stored = $this->removeHashPrefix($canonical->getFieldValue($this->handle) ?? '');
-                if ($stored === $anchorId) {
+                $stored = $this->readAnchorValue($canonical);
+                if ($stored !== null && $stored === $anchorId) {
                     return;
                 }
             }
@@ -286,6 +286,32 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
                 Craft::t('matrix-block-anchor', 'This anchor ID is already used by another block. Each anchor must be unique.')
             );
         }
+    }
+
+    /**
+     * Reads this field's anchor value off an element, or null when the element can't hold one.
+     *
+     * The element's own field layout is checked first: a block whose entry type doesn't include
+     * this field would make getFieldValue() throw. That happens on a draft save after a block's
+     * entry type has been switched from a type without the anchor field to one with it, because
+     * the canonical block still has the old type.
+     *
+     * @param ElementInterface $element The element to read the anchor from
+     * @return string|null The anchor without its hash prefix, or null when the element's layout
+     *                     doesn't include this field or the stored value isn't a string
+     * @throws InvalidFieldException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.3.1
+     */
+    private function readAnchorValue(ElementInterface $element): ?string
+    {
+        if (!$element->getFieldLayout()?->getFieldByHandle($this->handle) instanceof self) {
+            return null;
+        }
+
+        $value = $element->getFieldValue($this->handle);
+
+        return is_string($value) ? $this->removeHashPrefix($value) : null;
     }
 
     /**
@@ -364,8 +390,8 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
             if ($blockField instanceof self) {
                 // getFieldValue() already returns the normalized/sanitized value, so this
                 // compares like-for-like against $anchorId. Don't swap this for a raw column read.
-                $blockAnchorValue = $this->removeHashPrefix($block->getFieldValue($blockField->handle) ?? '');
-                if ($blockAnchorValue === $anchorId) {
+                $blockAnchorValue = $block->getFieldValue($blockField->handle);
+                if (is_string($blockAnchorValue) && $this->removeHashPrefix($blockAnchorValue) === $anchorId) {
                     return true;
                 }
             }
