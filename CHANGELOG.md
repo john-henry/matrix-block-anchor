@@ -1,5 +1,10 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.3.1 - 2026-09-07
+
+### Fixed
+- Fixed a server error when saving an entry after changing a Matrix block from an entry type without the anchor field to one that has it. The block saves as normal now instead of leaving the entry stuck. ([#7](https://github.com/john-henry/matrix-block-anchor/issues/7))
+
 ## 3.3.0 - 2026-07-05
 
 ### Fixed

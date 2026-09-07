@@ -1,9 +1,10 @@
 [![Stable Version](https://img.shields.io/packagist/v/johnhenry/matrix-block-anchor?label=stable&style=for-the-badge)](https://packagist.org/packages/johnhenry/matrix-block-anchor)
 [![Static Badge](https://img.shields.io/badge/free-plugin?style=for-the-badge&logo=craftcms&logoColor=white&logoSize=auto&label=Craft%20Plugin%20Store&labelColor=%23E5422B)](https://plugins.craftcms.com/matrix-block-anchor?craft5)
 
-<p align="center" style="margin-top:100px"><img width="120" height="120" alt="matrix-block-anchor-plugin-icon" src="https://johnhenry.ie/images/plugins/matrix-block-anchor.svg"></p>
 
-<h1 align="center">Matrix Block Anchor for Craft CMS</h1>
+![Matrix Block Anchor for Craft CMS](https://johnhenry.ie/images/plugins/promos/matrix-block-anchor/1.png)
+
+# Matrix Block Anchor for Craft CMS
 
 Matrix Block Anchor gives your editors anchor links straight to Matrix Blocks, no developer required. It grabs the block ID itself, sticks a copy button beside it, and that's your job done.
 
