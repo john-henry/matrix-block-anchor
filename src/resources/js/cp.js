@@ -45,7 +45,7 @@
         },
 
         _onClick: function (e) {
-            var btn = e.target.closest('.clip-copy');
+            var btn = e.target.closest('.mba-copy');
             if (!btn || this._processing.has(btn)) {
                 return;
             }
@@ -68,7 +68,7 @@
                 }
             }
 
-            var container = btn.closest('.copytext');
+            var container = btn.closest('.mba-copytext');
             return container ? container.querySelector('input') : null;
         },
 
@@ -85,8 +85,7 @@
 
             var self = this;
 
-            navigator.clipboard
-                .writeText(input.value)
+            this._writeText(input)
                 .then(function () {
                     var message = Craft.t('matrix-block-anchor', 'copied');
                     btn.classList.add('success');
@@ -109,6 +108,35 @@
                     }, 1000);
                     Craft.cp.displayError(failure);
                 });
+        },
+
+        // The Clipboard API only exists in a secure context, so a CP served over
+        // plain http falls back to selecting the input and copying the selection.
+        _writeText: function (input) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(input.value);
+            }
+
+            return new Promise(function (resolve, reject) {
+                var active = document.activeElement;
+                input.focus();
+                input.select();
+                var copied;
+                try {
+                    copied = document.execCommand('copy');
+                } catch (e) {
+                    copied = false;
+                }
+                input.setSelectionRange(0, 0);
+                if (active && active.focus) {
+                    active.focus();
+                }
+                if (copied) {
+                    resolve();
+                } else {
+                    reject();
+                }
+            });
         },
 
         destroy: function () {

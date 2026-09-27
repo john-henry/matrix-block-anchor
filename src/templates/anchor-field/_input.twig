@@ -1,31 +1,26 @@
-{# =========================================================================
-   Matrix Block Anchor — Field Input
-   A bare text input with a copy-to-clipboard button. The input is read-only
-   when custom anchors are switched off. The button is positioned over the
-   input in cp.css.
-   ========================================================================= #}
 {% import "_includes/forms" as forms %}
 
-{% set inputId = name ~ '-input' %}
+{% set inputId = field.getInputId() %}
 
-<div class="copytext">
-   {{ forms.text({
-	  id: inputId,
-	  name: name,
-	  value: value,
-	  disabled: not allowCustomAnchors,
-   }) }}
-   {{ tag('button', {
-	  type: 'button',
-	  class: 'btn clip-copy',
-	  title: 'Copy to clipboard'|t('matrix-block-anchor'),
-	  aria: {
-		 label: 'Copy to clipboard'|t('matrix-block-anchor'),
-		 controls: inputId,
-	  },
-	  data: {
-		 icon: 'clipboard',
-		 target: inputId,
-	  }
-   }) }}
+<div class="mba-copytext">
+    {{ forms.text({
+        id: inputId,
+        describedBy: field.describedBy,
+        name: name,
+        value: value,
+        readonly: readonly,
+    }) }}
+    {{ tag('button', {
+        type: 'button',
+        class: 'btn mba-copy',
+        title: 'Copy to clipboard'|t('matrix-block-anchor'),
+        aria: {
+            label: 'Copy to clipboard'|t('matrix-block-anchor'),
+            controls: inputId,
+        },
+        data: {
+            icon: 'clipboard',
+            target: inputId,
+        },
+    }) }}
 </div>

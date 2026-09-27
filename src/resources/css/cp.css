@@ -12,47 +12,40 @@
   border: 0;
 }
 
-/* .copytext holds just the input and the copy button, so making it the positioning
+/* .mba-copytext holds just the input and the copy button, so making it the positioning
    context pins the button to the input's own height. */
-.copytext {
+.mba-copytext {
   position: relative;
   display: flex;
 }
 
-.copytext .text {
+.mba-copytext .text {
   padding-inline-end: 2.5rem;
 }
 
-.clip-copy {
+.mba-copy {
   position: absolute;
   inset-block: 0;
   inset-inline-end: 0;
   height: 100%;
 }
 
-/* Craft's field wrapper already renders an errors list under the field, and the tab
-   shows the "Found N errors" summary, so hide the inline list here to stop the same
-   message appearing twice. Scoped to the copytext field so nothing else is affected. */
-.input:has(> .copytext) + .errors {
-  display: none;
-}
-
-.clip-copy:focus-visible {
+.mba-copy:focus-visible {
   outline: none;
   box-shadow: 0 0 0 1px var(--white, #fff), 0 0 0 3px var(--focus-ring, #127fbf);
 }
 
 /* Fallback for browsers without :focus-visible support. */
-.clip-copy:focus {
+.mba-copy:focus {
   outline: none;
   box-shadow: 0 0 0 1px var(--white, #fff), 0 0 0 3px var(--focus-ring, #127fbf);
 }
 
-.clip-copy:focus:not(:focus-visible) {
+.mba-copy:focus:not(:focus-visible) {
   box-shadow: none;
 }
 
-.clip-copy::after {
+.mba-copy::after {
   content: '';
   font-size: 0.8rem;
   position: absolute;
@@ -62,13 +55,13 @@
   transition: opacity 250ms ease-in-out;
 }
 
-.clip-copy.success::after,
-.clip-copy.error::after {
+.mba-copy.success::after,
+.mba-copy.error::after {
   content: attr(data-message);
   opacity: 1;
 }
 
-.clip-copy.success::after {
+.mba-copy.success::after {
   color: var(--success-color);
   padding: 1px 6px 2px ;
   border: 1px solid var(--success-color);
@@ -76,6 +69,6 @@
   background: #fff;
 }
 
-.clip-copy.error::after {
+.mba-copy.error::after {
   color: var(--error-color);
 }

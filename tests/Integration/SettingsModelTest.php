@@ -152,3 +152,40 @@ describe('Settings getters', function() {
         expect($settings->getAllowCustomAnchors(false))->toBe('$MY_ENV_VAR');
     });
 });
+
+describe('Settings::anchorPrefix characters and environment variables', function() {
+    it('rejects a prefix with characters an anchor can\'t hold', function(string $prefix) {
+        $settings = new Settings(['anchorPrefix' => $prefix]);
+
+        expect($settings->validate())->toBeFalse()
+            ->and($settings->getErrors('anchorPrefix'))->not->toBeEmpty();
+    })->with(['$', 'block.anchor', 'block"anchor', '_block']);
+
+    it('resolves an environment variable, and validates what it resolves to', function() {
+        $_SERVER['MBA_TEST_PREFIX'] = 'section';
+        $_SERVER['MBA_TEST_BAD_PREFIX'] = 'bad prefix';
+
+        try {
+            $good = new Settings(['anchorPrefix' => '$MBA_TEST_PREFIX']);
+            $bad = new Settings(['anchorPrefix' => '$MBA_TEST_BAD_PREFIX']);
+            $unset = new Settings(['anchorPrefix' => '$MBA_TEST_UNSET_PREFIX']);
+
+            expect($good->getAnchorPrefix())->toBe('section')
+                ->and($good->validate())->toBeTrue()
+                ->and($bad->validate())->toBeFalse()
+                ->and($unset->validate())->toBeFalse();
+        } finally {
+            unset($_SERVER['MBA_TEST_PREFIX'], $_SERVER['MBA_TEST_BAD_PREFIX']);
+        }
+    });
+
+    it('treats a boolean setting whose environment variable isn\'t set as off', function() {
+        $settings = new Settings([
+            'allowCustomAnchors' => '$MBA_TEST_UNSET_FLAG',
+            'useLegacySeparator' => '$MBA_TEST_UNSET_FLAG',
+        ]);
+
+        expect($settings->getAllowCustomAnchors())->toBeFalse()
+            ->and($settings->getUseLegacySeparator())->toBeFalse();
+    });
+});

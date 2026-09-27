@@ -1,79 +1,98 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.4.0 - 2026-09-25
+
+### Added
+- The anchor prefix can be set to an environment variable.
+- Anchors can be copied from revisions, and by people who can only view an entry.
+- The copy button works on a control panel served over plain http.
+
+### Changed
+- A custom anchor with characters it can't use now shows an error instead of being quietly tidied up.
+- Blocks without a custom anchor no longer store one, so a duplicated block gets its own anchor.
+- The anchor prefix must start with a letter, use only letters, numbers, hyphens and underscores, and be 80 characters or fewer.
+- Use Legacy Separator can be changed while custom anchors are on; it applies to blocks left without one.
+- The package you install no longer includes the documentation site or the test suite.
+
+### Fixed
+- The anchor box can be reached with a keyboard again when custom anchors are off.
+- Two blocks given the same custom anchor in one save are now caught.
+- Blocks can swap anchors, or take one from a block removed in the same save.
+- Entries with lots of blocks save much faster.
+- An unset environment variable no longer switches Allow Custom Anchors or Use Legacy Separator on.
+- A prefix with characters an anchor can't use no longer stops entries from saving.
+- The anchor box is labelled for screen readers, and its error shows under the field again.
+- The plugin's styles no longer change copy fields elsewhere in the control panel.
+- Field Usage lists an entry type under every Matrix field that uses it.
+- The copy messages can now be translated.
+
 ## 3.3.1 - 2026-09-07
 
 ### Fixed
-- Fixed a server error when saving an entry after changing a Matrix block from an entry type without the anchor field to one that has it. The block saves as normal now instead of leaving the entry stuck. ([#7](https://github.com/john-henry/matrix-block-anchor/issues/7))
+- Saving an entry no longer fails after a Matrix block is changed to an entry type that has the anchor field. ([#7](https://github.com/john-henry/matrix-block-anchor/issues/7))
 
 ## 3.3.0 - 2026-07-05
 
 ### Fixed
-- Saving a block no longer throws a server error if the anchor value comes through in an unexpected shape; it falls back to the auto-generated anchor instead.
-- Anchors created through imports or other non-CP tools (Feed Me, console commands, and the like) are now cleaned up the same way as anchors typed directly into the field, so an invalid anchor can no longer get through.
-- Fixed the copy button briefly stopping every other block's copy button from working after you'd used one - each block's button now works independently.
-- The copy control is a proper button now, not a link styled to look like one, so keyboard users and screen readers get consistent behaviour.
-- Copying an anchor now gets announced to screen readers, not just shown visually.
-- Added a visible focus outline on the copy button for keyboard navigation.
-- Large entries with hundreds of Matrix blocks now log a warning if the duplicate-anchor check can't scan all of them, so an uncaught duplicate on a very large entry is easier to track down.
+- An anchor that comes through in an unexpected shape falls back to the auto anchor instead of causing a server error.
+- Anchors saved by imports and console commands are cleaned up the same as ones typed in the control panel.
+- Each block's copy button works on its own, even straight after another one is used.
+- The copy control is a proper button, so it works with a keyboard and screen readers.
+- Copying an anchor is announced to screen readers.
+- The copy button has a visible focus outline.
 
 ## 3.2.0 - 2026-06-04
 
 ### Added
-- Added card preview attribute
-- Added some Pest testing
+- Anchors show in card previews.
 
 ### Changed
-- Added new branding
-- Tidied up plugin settings page with better messaging
-- Made plugin architecture consistent with my other plugins
+- New branding.
+- The plugin settings page has clearer wording.
 
 ### Fixed
-- _**Really**_ fixed issue where unique anchor error was triggering for Card views in Matrix field. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
+- The duplicate anchor error no longer shows for Matrix fields in card view. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
 
 ## 3.1.2 - 2026-03-15
 
 ### Fixed
-- Fixed issue where unique anchor error was triggering for Card views in Matrix field. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
+- The duplicate anchor error no longer shows for Matrix fields in card view. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
 
 ## 3.1.1 - 2026-01-08
 
 ### Added
-- Added Documentation URL
+- A documentation link.
 
 ## 3.1.0 - 2026-01-08
 
-### Changed
-- Changed how anchors are returned in template. If using custom anchors, then any anchor field not filled in will default to the Anchor Prefix from settings. ([#5](https://github.com/john-henry/matrix-block-anchor/issues/5))
-- Changed some field labels in settings to be more descriptive and concise
-- Made all text translatable
-- Updated README
-
 ### Added
-- Added section to plugin settings for listing Field Usage
-- GitHub Workflow files for code quality
+- The plugin settings list where the anchor field is used.
 
+### Changed
+- With custom anchors on, a block left without one uses the auto anchor. ([#5](https://github.com/john-henry/matrix-block-anchor/issues/5))
+- Clearer labels on the settings page.
+- All text can be translated.
 
 ## 3.0.0 - 2025-11-09
 
+> [!NOTE]
+> If you're upgrading from 2.x and your anchors look like `#blockIdAnchor-123`, turn on Use Legacy Separator so existing links keep working.
+
 ### Added
-- Added ability to add custom anchor text via new "Allow Custom Anchors" setting
-- Added validation for custom anchor IDs (must not start with number or contain spaces)
-- Added uniqueness validation to ensure no duplicate anchors within the same entry
-- Added "Use Legacy Separator" setting for backward compatibility with older plugin versions
-- Added translation support
+- Custom anchors, with the Allow Custom Anchors setting.
+- Custom anchors must start with a letter, can't contain spaces, and must be unique on the entry.
+- The Use Legacy Separator setting.
+- Translation support.
 
 ### Changed
-- Auto-generated anchors now don't include a uneditable separator dash
-
-> [!NOTE]
-> If upgrading from v2.x or earlier and you have existing anchors using the format `#blockIdAnchor-123`, enable the "Use Legacy Separator" setting in the plugin configuration to maintain the same format and prevent broken links.
+- Auto anchors no longer have a dash between the prefix and the block ID.
 
 ## 2.0.1 - 2024-09-09
 
 ### Added
-
 - Craft 5 support.
-- Github Workflow files
 
 ## 1.0.0 - 2024-08-19
-- Initial release
+
+### Added
+- Initial release.

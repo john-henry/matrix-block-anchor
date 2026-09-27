@@ -8,6 +8,7 @@ namespace johnhenry\matrixblockanchor\assetbundles;
 
 use craft\web\AssetBundle;
 use craft\web\assets\cp\CpAsset;
+use craft\web\View;
 
 /**
  * Matrix Block Anchor CP asset bundle
@@ -46,5 +47,27 @@ class MatrixBlockAnchorAssets extends AssetBundle
         ];
 
         parent::init();
+    }
+
+    /**
+     * Registers the strings the CP script passes to `Craft.t()`.
+     *
+     * @param \yii\web\View $view The view the bundle is registered on
+     * @return void
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    public function registerAssetFiles($view): void
+    {
+        parent::registerAssetFiles($view);
+
+        if ($view instanceof View) {
+            $view->registerTranslations('matrix-block-anchor', [
+                'copied',
+                'error',
+                'No anchor text found to copy.',
+                'Failed to copy anchor to clipboard.',
+            ]);
+        }
     }
 }

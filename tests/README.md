@@ -63,10 +63,10 @@ Integration tests for the uniqueness validation in `MatrixBlockAnchorField`. Req
 
 ## How the mocks work
 
-Format validation tests use a `PHPUnit\Framework\MockObject` of `craft\base\ElementInterface`. Critically, this mock is **not** a `NestedElementInterface`, so `validateUniqueAnchor()` returns early — only the format rules run. This keeps the tests focused and fast without needing a real matrix block hierarchy.
+Format validation tests use a `PHPUnit\Framework\MockObject` of `craft\base\ElementInterface`. Critically, this mock is **not** a `NestedElementInterface`, so `_validateUniqueAnchor()` returns early — only the format rules run. This keeps the tests focused and fast without needing a real matrix block hierarchy.
 
 `addError()` calls on the mock are captured into a plain array so tests can assert on which field received an error without inspecting Craft's error bag.
 
 The mock factory is stored in `$this->mockElement` via `beforeEach`. Because `createMock()` is `protected` on `PHPUnit\Framework\TestCase`, the factory is a closure bound to the TestCase instance using `Closure::bind($factory, $this, \PHPUnit\Framework\TestCase::class)`.
 
-The mock targets `craft\base\Element` (the abstract base class) rather than `ElementInterface`. PHPUnit can only configure methods that are declared on the type being mocked, and `addError()` is inherited from `yii\base\Model` — it is not part of the interface. `craft\base\Element` does not implement `NestedElementInterface`, so the `validateUniqueAnchor()` guard still fires and returns early.
+The mock targets `craft\base\Element` (the abstract base class) rather than `ElementInterface`. PHPUnit can only configure methods that are declared on the type being mocked, and `addError()` is inherited from `yii\base\Model` — it is not part of the interface. `craft\base\Element` does not implement `NestedElementInterface`, so the `_validateUniqueAnchor()` guard still fires and returns early.

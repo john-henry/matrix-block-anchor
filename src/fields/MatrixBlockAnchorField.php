@@ -11,6 +11,7 @@ use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\base\NestedElementInterface;
 use craft\base\PreviewableFieldInterface;
+use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
 use craft\errors\InvalidFieldException;
 use johnhenry\matrixblockanchor\MatrixBlockAnchor;
@@ -19,12 +20,15 @@ use Twig\Error\RuntimeError;
 use Twig\Error\SyntaxError;
 use yii\base\Exception;
 use yii\base\InvalidConfigException;
+use yii\db\Exception as DbException;
 
 /**
  * Matrix Block Anchor Field
  *
- * Provides a custom field type for adding unique anchor IDs to matrix blocks.
- * Validates anchor IDs according to HTML ID rules and ensures uniqueness across blocks.
+ * Gives each Matrix block an anchor ID: built from the prefix and the block ID,
+ * or typed by an editor when custom anchors are allowed. Only typed anchors are
+ * stored; auto anchors are rebuilt from the block's own ID on every load, so a
+ * duplicated block never inherits another block's anchor.
  *
  * @property-read bool $allowCustomAnchors Whether custom anchors are allowed
  * @property-read array[] $elementValidationRules Validation rules for the field
@@ -36,35 +40,37 @@ use yii\base\InvalidConfigException;
 class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
 {
     // =========================================================================
-    // Constants
+    // Const Properties
     // =========================================================================
 
     /**
-     * Template path for rendering the field input
-     *
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
+     * @var string Template path for rendering the field input
      */
     public const TEMPLATE_PATH = 'matrix-block-anchor/anchor-field/_input';
 
     /**
-     * Maximum length for anchor IDs
-     *
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
+     * @var int Maximum length for anchor IDs
      */
     private const MAX_ANCHOR_LENGTH = 100;
 
     /**
-     * Maximum number of blocks to check for duplicates
-     *
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
+     * @var string Prefix used when the configured one resolves to nothing usable
      */
-    private const MAX_BLOCKS_TO_CHECK = 1000;
+    private const DEFAULT_PREFIX = 'blockIdAnchor';
 
     // =========================================================================
-    // Static Methods
+    // Static Properties
+    // =========================================================================
+
+    /**
+     * @var array<string, array<int, array{anchor: string, fieldId: int|null}>> Typed anchors stored on each
+     * owner's blocks, keyed `ownerId:siteId` and then by block ID. Built once per owner per request, and
+     * cleared whenever an element is saved, deleted or restored.
+     */
+    private static array $_storedAnchors = [];
+
+    // =========================================================================
+    // Public Methods
     // =========================================================================
 
     /**
@@ -79,20 +85,32 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
         return 'Matrix Block Anchor';
     }
 
-    // =========================================================================
-    // Public Methods
-    // =========================================================================
+    /**
+     * Clears the stored anchors built for uniqueness checks, so a later check
+     * in the same request sees the latest saved values.
+     *
+     * @return void
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    public static function clearStoredAnchors(): void
+    {
+        self::$_storedAnchors = [];
+    }
 
     /**
-     * Gets the anchor prefix from plugin settings
+     * Returns the resolved anchor prefix, reduced to the characters an anchor
+     * may contain, or `blockIdAnchor` when nothing usable is left.
      *
-     * @return string The configured anchor prefix
+     * @return string The anchor prefix
      * @author John Henry Donovan <info@johnhenry.ie>
      * @since 1.0.0
      */
     public function getAnchorPrefix(): string
     {
-        return MatrixBlockAnchor::getInstance()->getSettings()->anchorPrefix ?? 'blockIdAnchor';
+        $prefix = $this->_sanitizeAnchorId(MatrixBlockAnchor::getInstance()->getSettings()->getAnchorPrefix());
+
+        return $prefix !== '' ? $prefix : self::DEFAULT_PREFIX;
     }
 
     /**
@@ -104,16 +122,16 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      */
     public function getAllowCustomAnchors(): bool
     {
-        return MatrixBlockAnchor::getInstance()->getSettings()->getAllowCustomAnchors();
+        return (bool)MatrixBlockAnchor::getInstance()->getSettings()->getAllowCustomAnchors();
     }
 
     /**
-     * Normalizes the value for storage and template output
+     * Normalizes the value for template output
      *
-     * Returns the custom anchor when one is set, otherwise builds the default anchor from the
-     * prefix and block ID. The custom anchor is always sanitized here, so values coming in from
-     * outside the CP (Feed Me imports, console resaves, programmatic saves) stay within the safe
-     * character set even though they never run through validateAnchorId().
+     * Returns the custom anchor when custom anchors are allowed and one is set, otherwise the
+     * block's auto anchor. A custom anchor is cleaned down to the safe character set here, so
+     * values from imports, console resaves and programmatic saves are safe to output even though
+     * they never run through validation.
      *
      * @param mixed $value The raw field value
      * @param ElementInterface|null $element The element the field is associated with
@@ -123,25 +141,59 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      */
     public function normalizeValue(mixed $value, ?ElementInterface $element = null): string
     {
-        $allowCustomAnchors = $this->getAllowCustomAnchors();
-
-        // If custom anchors are allowed and a string value is set, use it (sanitized).
-        // Craft passes raw request input through here, so a non-string (e.g. an array from
-        // a crafted `fields[handle][]=x` body param) must fall through to auto-generation
-        // rather than reach the string-typed helpers below and throw.
-        if ($allowCustomAnchors && is_string($value) && $value !== '') {
-            $sanitized = $this->sanitizeAnchorId($this->removeHashPrefix($value));
-            if ($sanitized !== '') {
+        // A non-string (e.g. an array from a crafted `fields[handle][]=x` body param) falls through
+        // to the auto anchor rather than reaching the string helpers.
+        if ($this->getAllowCustomAnchors() && is_string($value)) {
+            $sanitized = $this->_sanitizeAnchorId($this->_removeHashPrefix($value));
+            if ($sanitized !== '' && !$this->_isAutoAnchor($sanitized)) {
                 return $sanitized;
             }
         }
 
-        // Otherwise, generate default anchor
-        $matrixBlockId = $element?->canonicalId ?? $element?->id ?? '';
-        $anchorPrefix = $this->getAnchorPrefix();
-        $separator = $this->determineSeparator();
+        return $this->_autoAnchor($element);
+    }
 
-        return $anchorPrefix . $separator . $matrixBlockId;
+    /**
+     * Normalizes a posted value, keeping what the editor typed so validation
+     * can report a problem instead of silently rewriting it.
+     *
+     * @param mixed $value The posted value
+     * @param ElementInterface|null $element The element the field is associated with
+     * @return string The typed anchor without hash prefix, or the normalized value
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    public function normalizeValueFromRequest(mixed $value, ?ElementInterface $element): string
+    {
+        if ($this->getAllowCustomAnchors() && is_string($value)) {
+            $typed = $this->_removeHashPrefix(trim($value));
+            if ($typed !== '' && !$this->_isAutoAnchor($typed)) {
+                return $typed;
+            }
+        }
+
+        return $this->normalizeValue($value, $element);
+    }
+
+    /**
+     * Stores only anchors an editor typed. Auto anchors are stored as null and
+     * rebuilt from the block ID on load.
+     *
+     * @param mixed $value The normalized value
+     * @param ElementInterface|null $element The element the field is associated with
+     * @return string|null The cleaned custom anchor, or null
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    public function serializeValue(mixed $value, ?ElementInterface $element): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $sanitized = $this->_sanitizeAnchorId($this->_removeHashPrefix($value));
+
+        return $sanitized !== '' && !$this->_isAutoAnchor($sanitized) ? $sanitized : null;
     }
 
     /**
@@ -159,282 +211,37 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
     }
 
     /**
-     * Validates the anchor ID according to HTML ID rules
-     *
-     * Checks that the anchor:
-     * - Contains at least one character
-     * - Does not start with a number
-     * - Does not contain whitespace
-     * - Is unique within the owner, per site
+     * Validates a typed anchor: its format, and that no other block on the owner
+     * uses it. Auto anchors are always valid and unique, so they're skipped.
      *
      * @param ElementInterface $element The element being validated
      * @return void
      * @throws InvalidFieldException
      * @throws InvalidConfigException
-     * @throws \yii\db\Exception If the duplicate-anchor lookup query fails
+     * @throws DbException If the stored anchor lookup query fails
      * @author John Henry Donovan <info@johnhenry.ie>
      * @since 1.0.0
      */
     public function validateAnchorId(ElementInterface $element): void
     {
-        $value = $element->getFieldValue($this->handle);
-        if (empty($value)) {
+        if (!$this->getAllowCustomAnchors()) {
             return;
-        }
-
-        $anchorId = $this->removeHashPrefix($value);
-
-        if (!$this->isValidAnchorFormat($element, $anchorId)) {
-            return;
-        }
-
-        $this->validateUniqueAnchor($element, $anchorId);
-    }
-
-    /**
-     * Validates the format of an anchor ID
-     *
-     * @param ElementInterface $element The element being validated
-     * @param string $anchorId The anchor ID to validate
-     * @return bool True if the format is valid, false otherwise
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
-     */
-    private function isValidAnchorFormat(ElementInterface $element, string $anchorId): bool
-    {
-        // Cap the length before running any other checks.
-        if (mb_strlen($anchorId) > self::MAX_ANCHOR_LENGTH) {
-            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID must not exceed {max} characters.', ['max' => self::MAX_ANCHOR_LENGTH]));
-            return false;
-        }
-
-        if ($anchorId === '') {
-            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID must contain at least one character.'));
-            return false;
-        }
-
-        if (preg_match('/^\d/', $anchorId)) {
-            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID cannot start with a number.'));
-            return false;
-        }
-
-        if (preg_match('/\s/', $anchorId)) {
-            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID must not contain whitespaces (spaces, tabs, etc.).'));
-            return false;
-        }
-
-
-        // Only allow: a-z, A-Z, 0-9, hyphen, underscore
-        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*$/', $anchorId)) {
-            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID can only contain letters, numbers, hyphens, and underscores, and must start with a letter.'));
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Validates that the anchor is unique within the owner, per site
-     *
-     * Checks all matrix blocks belonging to the owner element (scoped to the owner's site
-     * via {@see NestedElementInterface::primaryOwner()}) to ensure no duplicate anchor IDs exist.
-     *
-     * @param ElementInterface $element The element being validated
-     * @param string $anchorId The anchor ID to check for uniqueness
-     * @return void
-     * @throws InvalidConfigException|InvalidFieldException
-     * @throws \yii\db\Exception If the duplicate-anchor lookup query fails
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
-     */
-    private function validateUniqueAnchor(ElementInterface $element, string $anchorId): void
-    {
-        if ($element->getIsRevision()) {
-            return;
-        }
-
-        if (!($element instanceof NestedElementInterface)) {
-            return;
-        }
-
-        $owner = $element->getOwner();
-        if (!$owner) {
-            return;
-        }
-
-        $fieldLayout = $owner->getFieldLayout();
-        if (!$fieldLayout) {
-            return;
-        }
-
-        // On a draft save, if the anchor still matches the canonical value it hasn't changed,
-        // so skip the uniqueness check to avoid a false duplicate error on resave. Canonical
-        // elements return themselves from getCanonical(), so this only applies to drafts.
-        if (!$element->getIsCanonical()) {
-            $canonical = $element->getCanonical();
-            if ($canonical) { // @phpstan-ignore-line
-                $stored = $this->readAnchorValue($canonical);
-                if ($stored !== null && $stored === $anchorId) {
-                    return;
-                }
-            }
-        }
-
-        if ($this->hasDuplicateAnchorInOwner($owner, $element, $anchorId)) {
-            $element->addError(
-                $this->handle,
-                Craft::t('matrix-block-anchor', 'This anchor ID is already used by another block. Each anchor must be unique.')
-            );
-        }
-    }
-
-    /**
-     * Reads this field's anchor value off an element, or null when the element can't hold one.
-     *
-     * The element's own field layout is checked first: a block whose entry type doesn't include
-     * this field would make getFieldValue() throw. That happens on a draft save after a block's
-     * entry type has been switched from a type without the anchor field to one with it, because
-     * the canonical block still has the old type.
-     *
-     * @param ElementInterface $element The element to read the anchor from
-     * @return string|null The anchor without its hash prefix, or null when the element's layout
-     *                     doesn't include this field or the stored value isn't a string
-     * @throws InvalidFieldException
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 3.3.1
-     */
-    private function readAnchorValue(ElementInterface $element): ?string
-    {
-        if (!$element->getFieldLayout()?->getFieldByHandle($this->handle) instanceof self) {
-            return null;
         }
 
         $value = $element->getFieldValue($this->handle);
-
-        return is_string($value) ? $this->removeHashPrefix($value) : null;
-    }
-
-    /**
-     * Checks if a duplicate anchor exists in the owner's matrix blocks
-     *
-     * @param ElementInterface $owner The owner element to check
-     * @param ElementInterface $currentElement The current element to skip
-     * @param string $anchorId The anchor ID to check for duplicates
-     * @return bool True if a duplicate is found, false otherwise
-     * @throws InvalidFieldException|InvalidConfigException
-     * @throws \yii\db\Exception If the underlying `Entry::find()->all()` query fails
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
-     */
-    private function hasDuplicateAnchorInOwner(ElementInterface $owner, ElementInterface $currentElement, string $anchorId): bool
-    {
-        /** @var ElementInterface|null $canonicalOwner */
-        $canonicalOwner = $owner->getIsCanonical() ? $owner : $owner->getCanonical();
-        if (!$canonicalOwner) {
-            return false;
+        if (!is_string($value) || $value === '') {
+            return;
         }
 
-        $currentCanonicalId = $currentElement->getIsCanonical()
-            ? $currentElement->id
-            : ($currentElement->getCanonical()?->id ?? $currentElement->id);
+        $anchorId = $this->_removeHashPrefix($value);
 
-        // Query the blocks straight off primaryOwner rather than the owner's field-layout
-        // cache, which is often stale mid-validation.
-        $blocks = Entry::find()
-            ->primaryOwner($canonicalOwner)
-            ->status(null)
-            ->limit(self::MAX_BLOCKS_TO_CHECK)
-            ->all();
-
-        // The query is capped at MAX_BLOCKS_TO_CHECK. If we hit that cap there may be more
-        // blocks we never looked at, so the result is best-effort rather than a guarantee.
-        // Log it so a missed duplicate on a very large owner can be traced in web.log.
-        if (count($blocks) >= self::MAX_BLOCKS_TO_CHECK) {
-            Craft::warning(
-                'Anchor uniqueness check truncated at ' . self::MAX_BLOCKS_TO_CHECK
-                . ' blocks for owner element #' . $canonicalOwner->id . ' (' . $canonicalOwner::class . '); '
-                . 'duplicates beyond this cap will not be detected.',
-                'matrix-block-anchor'
-            );
+        if ($this->_isAutoAnchor($anchorId) || !$this->_isValidAnchorFormat($element, $anchorId)) {
+            return;
         }
 
-        foreach ($blocks as $block) {
-            if ($block->id === $currentCanonicalId) {
-                continue;
-            }
-
-            if ($this->blockHasMatchingAnchor($block, $anchorId)) {
-                return true;
-            }
-        }
-
-        return false;
+        $this->_validateUniqueAnchor($element, $anchorId);
     }
 
-
-    /**
-     * Checks if a matrix block has a matching anchor ID
-     *
-     * @param ElementInterface $block The matrix block to check
-     * @param string $anchorId The anchor ID to match
-     * @return bool True if the block has a matching anchor, false otherwise
-     * @throws InvalidFieldException
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
-     */
-    private function blockHasMatchingAnchor(ElementInterface $block, string $anchorId): bool
-    {
-        $blockFields = $block->getFieldLayout()?->getCustomFields() ?? [];
-
-        foreach ($blockFields as $blockField) {
-            if ($blockField instanceof self) {
-                // getFieldValue() already returns the normalized/sanitized value, so this
-                // compares like-for-like against $anchorId. Don't swap this for a raw column read.
-                $blockAnchorValue = $block->getFieldValue($blockField->handle);
-                if (is_string($blockAnchorValue) && $this->removeHashPrefix($blockAnchorValue) === $anchorId) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-
-
-    /**
-     * Renders the field's input HTML
-     *
-     * Generates either a custom anchor input or a default anchor display based on plugin settings.
-     *
-     * @param mixed $value The current field value
-     * @param ElementInterface|null $element The element the field is associated with
-     * @return string The rendered HTML for the field input
-     * @throws Exception If there's an error in the rendering process
-     * @throws LoaderError If the template cannot be loaded
-     * @throws RuntimeError If there's a runtime error in the template
-     * @throws SyntaxError If there's a syntax error in the template
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
-     */
-    public function getInputHtml(mixed $value, ?ElementInterface $element = null): string
-    {
-        $matrixBlockId = $element?->canonicalId ?? null;
-        $anchorPrefix = $this->getAnchorPrefix();
-        $allowCustomAnchors = $this->getAllowCustomAnchors();
-
-        $separator = $this->determineSeparator();
-        $displayValue = $this->generateDisplayValue($value, $anchorPrefix, $separator, $matrixBlockId, $allowCustomAnchors);
-
-        return Craft::$app->getView()->renderTemplate(
-            self::TEMPLATE_PATH,
-            [
-                'name' => $this->handle,
-                'value' => $displayValue,
-                'allowCustomAnchors' => $allowCustomAnchors,
-            ]
-        );
-    }
     /**
      * Returns the HTML displayed in the element index preview column.
      *
@@ -446,10 +253,11 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      */
     public function getPreviewHtml(mixed $value, ElementInterface $element): string
     {
-        if (!$value) {
+        if (!is_string($value) || $value === '') {
             return '';
         }
-        return '<code>' . htmlspecialchars('#' . ltrim($value, '#')) . '</code>';
+
+        return '<code>' . htmlspecialchars('#' . $this->_removeHashPrefix($value)) . '</code>';
     }
 
     /**
@@ -463,8 +271,44 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      */
     public function previewPlaceholderHtml(mixed $value, ?ElementInterface $element): string
     {
-        $prefix = $this->getAnchorPrefix();
-        return '<code>#' . htmlspecialchars($prefix) . '…</code>';
+        return '<code>#' . htmlspecialchars($this->getAnchorPrefix()) . '…</code>';
+    }
+
+    /**
+     * Renders the field read-only, with the copy button still working, for
+     * revisions and users who can only view the entry.
+     *
+     * @param mixed $value The normalized field value
+     * @param ElementInterface $element The element the field belongs to
+     * @return string The rendered HTML
+     * @throws Exception|LoaderError|RuntimeError|SyntaxError If the template can't be rendered
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    public function getStaticHtml(mixed $value, ElementInterface $element): string
+    {
+        return $this->_renderInput($value, $element, true);
+    }
+
+    // =========================================================================
+    // Protected Methods
+    // =========================================================================
+
+    /**
+     * Renders the field input: editable when custom anchors are allowed,
+     * otherwise read-only so the anchor can still be focused and copied.
+     *
+     * @param mixed $value The normalized value, or the raw posted value after a validation error
+     * @param ElementInterface|null $element The element the field is associated with
+     * @param bool $inline Whether this is for an inline edit form
+     * @return string The rendered HTML
+     * @throws Exception|LoaderError|RuntimeError|SyntaxError If the template can't be rendered
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    protected function inputHtml(mixed $value, ?ElementInterface $element, bool $inline): string
+    {
+        return $this->_renderInput($value, $element, false);
     }
 
     // =========================================================================
@@ -472,50 +316,295 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
     // =========================================================================
 
     /**
+     * Renders the input template.
+     *
+     * @param mixed $value The field value
+     * @param ElementInterface|null $element The element the field is associated with
+     * @param bool $static Whether to render read-only with no posted input
+     * @return string The rendered HTML
+     * @throws Exception|LoaderError|RuntimeError|SyntaxError If the template can't be rendered
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    private function _renderInput(mixed $value, ?ElementInterface $element, bool $static): string
+    {
+        $allowCustomAnchors = $this->getAllowCustomAnchors();
+        $anchor = $allowCustomAnchors && is_string($value) && $this->_removeHashPrefix($value) !== ''
+            ? $this->_removeHashPrefix($value)
+            : $this->_autoAnchor($element);
+
+        return Craft::$app->getView()->renderTemplate(self::TEMPLATE_PATH, [
+            'field' => $this,
+            'name' => $static ? null : $this->handle,
+            'value' => '#' . $anchor,
+            'readonly' => $static || !$allowCustomAnchors,
+        ]);
+    }
+
+    /**
+     * Builds the auto anchor for an element from the prefix, the separator and
+     * the block's canonical ID.
+     *
+     * @param ElementInterface|null $element The element
+     * @return string The auto anchor
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    private function _autoAnchor(?ElementInterface $element): string
+    {
+        return $this->getAnchorPrefix() . $this->_determineSeparator() . ($element?->getCanonicalId() ?? '');
+    }
+
+    /**
+     * Returns whether an anchor has the shape of an auto anchor: the prefix and
+     * separator followed only by digits (or nothing, for a block not yet saved).
+     *
+     * @param string $anchorId The anchor without hash prefix
+     * @return bool Whether it's an auto anchor
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    private function _isAutoAnchor(string $anchorId): bool
+    {
+        $pattern = '/^' . preg_quote($this->getAnchorPrefix() . $this->_determineSeparator(), '/') . '\d*$/';
+
+        return preg_match($pattern, $anchorId) === 1;
+    }
+
+    /**
+     * Validates the format of a typed anchor, adding an error when it fails.
+     *
+     * @param ElementInterface $element The element being validated
+     * @param string $anchorId The anchor ID to validate
+     * @return bool True if the format is valid, false otherwise
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    private function _isValidAnchorFormat(ElementInterface $element, string $anchorId): bool
+    {
+        if (mb_strlen($anchorId) > self::MAX_ANCHOR_LENGTH) {
+            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID must not exceed {max} characters.', ['max' => self::MAX_ANCHOR_LENGTH]));
+            return false;
+        }
+
+        if (preg_match('/^\d/', $anchorId)) {
+            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID cannot start with a number.'));
+            return false;
+        }
+
+        if (preg_match('/\s/', $anchorId)) {
+            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID must not contain whitespaces (spaces, tabs, etc.).'));
+            return false;
+        }
+
+        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*$/', $anchorId)) {
+            $element->addError($this->handle, Craft::t('matrix-block-anchor', 'Anchor ID can only contain letters, numbers, hyphens, and underscores, and must start with a letter.'));
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Validates that no other block on the owner uses the anchor, per site.
+     *
+     * @param ElementInterface $element The element being validated
+     * @param string $anchorId The anchor ID to check for uniqueness
+     * @return void
+     * @throws InvalidConfigException|InvalidFieldException
+     * @throws DbException If the stored anchor lookup query fails
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    private function _validateUniqueAnchor(ElementInterface $element, string $anchorId): void
+    {
+        if ($element->getIsRevision() || !$element instanceof NestedElementInterface) {
+            return;
+        }
+
+        $owner = $element->getOwner();
+        if ($owner === null || $owner->getFieldLayout() === null) {
+            return;
+        }
+
+        // A draft whose anchor matches its canonical block's hasn't changed it, so it can't have
+        // introduced a clash; skipping keeps an existing duplicate from blocking unrelated edits.
+        if (!$element->getIsCanonical() && $this->_readAnchorValue($element->getCanonical()) === $anchorId) {
+            return;
+        }
+
+        // Likewise for a saved block whose anchor is unchanged: the error belongs on the block
+        // that just took the anchor, not the one that already had it.
+        $currentId = $element->getCanonicalId();
+        if ($currentId !== null && ($this->_storedAnchorsFor($owner)[$currentId]['anchor'] ?? null) === $anchorId) {
+            return;
+        }
+
+        if ($this->_hasDuplicateAnchorInOwner($owner, $element, $anchorId)) {
+            $element->addError(
+                $this->handle,
+                Craft::t('matrix-block-anchor', 'This anchor ID is already used by another block. Each anchor must be unique.')
+            );
+        }
+    }
+
+    /**
+     * Reads this field's anchor value off an element, or null when the element can't hold one.
+     *
+     * The element's own field layout is checked first: a block whose entry type doesn't include
+     * this field would make getFieldValue() throw. That's the case for a draft block whose entry
+     * type was switched to one with the anchor field, because its canonical block still has the
+     * old type.
+     *
+     * @param ElementInterface $element The element to read the anchor from
+     * @return string|null The anchor without its hash prefix, or null when the element's layout
+     *                     doesn't include this field or the stored value isn't a string
+     * @throws InvalidFieldException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.3.1
+     */
+    private function _readAnchorValue(ElementInterface $element): ?string
+    {
+        if (!$element->getFieldLayout()?->getFieldByHandle($this->handle) instanceof self) {
+            return null;
+        }
+
+        $value = $element->getFieldValue($this->handle);
+
+        return is_string($value) ? $this->_removeHashPrefix($value) : null;
+    }
+
+    /**
+     * Checks if another block on the owner already has the anchor
+     *
+     * Blocks being saved alongside this one are compared by their unsaved values, taken from the
+     * owner's Matrix field, so two blocks given the same new anchor in one save are caught and two
+     * blocks can swap anchors. Everything else is compared by its stored value.
+     *
+     * @param ElementInterface $owner The owner element
+     * @param NestedElementInterface&ElementInterface $currentElement The block being validated
+     * @param string $anchorId The anchor ID to check for duplicates
+     * @return bool True if a duplicate is found, false otherwise
+     * @throws InvalidFieldException|InvalidConfigException
+     * @throws DbException If the stored anchor lookup query fails
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 1.0.0
+     */
+    private function _hasDuplicateAnchorInOwner(ElementInterface $owner, NestedElementInterface $currentElement, string $anchorId): bool
+    {
+        $currentId = $currentElement->getCanonicalId();
+        $siblings = $this->_unsavedSiblings($owner, $currentElement);
+
+        foreach ($siblings as $sibling) {
+            if ($sibling === $currentElement || ($currentId !== null && $sibling->getCanonicalId() === $currentId)) {
+                continue;
+            }
+
+            if ($this->_readAnchorValue($sibling) === $anchorId) {
+                return true;
+            }
+        }
+
+        // With the Matrix field's blocks in memory, its stored rows are out of date: a block
+        // removed in this save, or one whose anchor is changing, would otherwise still count.
+        $skipFieldId = $siblings !== [] ? $currentElement->getField()?->id : null;
+
+        foreach ($this->_storedAnchorsFor($owner) as $blockId => $stored) {
+            if ($blockId === $currentId || ($skipFieldId !== null && $stored['fieldId'] === $skipFieldId)) {
+                continue;
+            }
+
+            if ($stored['anchor'] === $anchorId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the blocks the owner holds in memory for this block's Matrix field.
+     *
+     * When Craft validates an owner's Matrix field, it validates each block with the owner set, and
+     * the owner's field value still holds the blocks being saved. A block saved on its own (from a
+     * card or slideout) has no such set, so this returns nothing.
+     *
+     * @param ElementInterface $owner The owner element
+     * @param NestedElementInterface $block The block being validated
+     * @return ElementInterface[] The in-memory blocks, or an empty array
+     * @throws InvalidConfigException
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    private function _unsavedSiblings(ElementInterface $owner, NestedElementInterface $block): array
+    {
+        $matrixField = $block->getField();
+        if ($matrixField === null || $owner->getFieldLayout()?->getFieldByHandle($matrixField->handle) === null) {
+            return [];
+        }
+
+        $value = $owner->getFieldValue($matrixField->handle);
+
+        return $value instanceof EntryQuery ? ($value->getCachedResult() ?? []) : [];
+    }
+
+    /**
+     * Returns the typed anchors stored on the owner's blocks, keyed by block ID.
+     *
+     * Reads the canonical owner's blocks in the owner's site. Built once per owner per request,
+     * because a save validates every block and reloading them all for each one is quadratic.
+     *
+     * @param ElementInterface $owner The owner element
+     * @return array<int, array{anchor: string, fieldId: int|null}> Anchors keyed by block ID
+     * @throws InvalidFieldException
+     * @throws DbException If the query fails
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.4.0
+     */
+    private function _storedAnchorsFor(ElementInterface $owner): array
+    {
+        $canonicalOwner = $owner->getCanonical();
+        $key = $canonicalOwner->id . ':' . $canonicalOwner->siteId;
+
+        if (isset(self::$_storedAnchors[$key])) {
+            return self::$_storedAnchors[$key];
+        }
+
+        $anchors = [];
+        $blocks = Entry::find()
+            ->primaryOwner($canonicalOwner)
+            ->status(null)
+            ->all();
+
+        foreach ($blocks as $block) {
+            foreach ($block->getFieldLayout()?->getCustomFields() ?? [] as $blockField) {
+                if (!$blockField instanceof self) {
+                    continue;
+                }
+
+                $anchor = $block->getFieldValue($blockField->handle);
+                if (is_string($anchor) && !$this->_isAutoAnchor($anchor)) {
+                    $anchors[$block->id] = ['anchor' => $anchor, 'fieldId' => $block->fieldId];
+                }
+            }
+        }
+
+        return self::$_storedAnchors[$key] = $anchors;
+    }
+
+    /**
      * Determines the separator to use between prefix and block ID
      *
      * Controlled solely by the "Use Legacy Separator" setting: a hyphen when it's on, nothing
-     * when it's off. The prefix has no bearing on whether a separator is emitted.
+     * when it's off.
      *
      * @return string The separator character
      * @author John Henry Donovan <info@johnhenry.ie>
      * @since 2.0.0
      */
-    private function determineSeparator(): string
+    private function _determineSeparator(): string
     {
-        $settings = MatrixBlockAnchor::getInstance()->getSettings();
-
-        if ($settings->getUseLegacySeparator()) {
-            return '-';
-        }
-
-        return '';
-    }
-
-    /**
-     * Generates the display value for the anchor field
-     *
-     * @param mixed $value The stored field value
-     * @param string $anchorPrefix The anchor prefix
-     * @param string $separator The separator character
-     * @param mixed $matrixBlockId The matrix block ID
-     * @param bool $allowCustomAnchors Whether custom anchors are allowed
-     * @return string The formatted display value with hash prefix
-     * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 1.0.0
-     */
-    private function generateDisplayValue(
-        mixed $value,
-        string $anchorPrefix,
-        string $separator,
-        mixed $matrixBlockId,
-        bool $allowCustomAnchors,
-    ): string {
-        if ($allowCustomAnchors && is_string($value) && $value !== '') {
-            return '#' . $this->removeHashPrefix($value);
-        }
-
-        return '#' . $anchorPrefix . $separator . $matrixBlockId;
+        return MatrixBlockAnchor::getInstance()->getSettings()->getUseLegacySeparator() ? '-' : '';
     }
 
     /**
@@ -526,29 +615,28 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      * @author John Henry Donovan <info@johnhenry.ie>
      * @since 1.0.0
      */
-    private function removeHashPrefix(string $value): string
+    private function _removeHashPrefix(string $value): string
     {
         return ltrim($value, '#');
     }
 
     /**
-     * Sanitizes a candidate anchor ID down to the safe character set.
+     * Cleans a candidate anchor ID down to the safe character set.
      *
-     * Strips anything outside `[a-zA-Z0-9_-]`, then strips any leading characters that aren't
-     * letters so the result always starts with a letter. This runs on every write path,
-     * including the ones that skip {@see validateAnchorId()} (imports, console resaves,
-     * programmatic saves), so the safe-character rule holds no matter how the value arrived.
+     * Strips anything outside `[a-zA-Z0-9_-]`, then any leading characters that aren't letters so
+     * the result starts with a letter, and caps the length. Custom anchors and the prefix both go
+     * through here, so every anchor is safe to output however it was saved.
      *
      * @param string $value The candidate anchor ID, already stripped of any hash prefix
-     * @return string The sanitized anchor ID, or an empty string if nothing safe remains
+     * @return string The cleaned anchor ID, or an empty string if nothing safe remains
      * @author John Henry Donovan <info@johnhenry.ie>
      * @since 3.3.0
      */
-    private function sanitizeAnchorId(string $value): string
+    private function _sanitizeAnchorId(string $value): string
     {
         $stripped = preg_replace('/[^a-zA-Z0-9_-]/', '', $value) ?? '';
-        $withoutLeadingNonLetters = preg_replace('/^[^a-zA-Z]+/', '', $stripped) ?? '';
+        $startsWithLetter = preg_replace('/^[^a-zA-Z]+/', '', $stripped) ?? '';
 
-        return $withoutLeadingNonLetters;
+        return substr($startsWithLetter, 0, self::MAX_ANCHOR_LENGTH);
     }
 }

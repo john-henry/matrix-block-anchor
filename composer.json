@@ -1,15 +1,20 @@
 {
   "name": "johnhenry/matrix-block-anchor",
-  "description": "Give editors copy-ready anchor links straight to Matrix blocks, auto-generated or custom, no developer required.",
+  "description": "Anchor links for Matrix blocks, built from the block ID or set by an editor, with a copy button on each.",
   "type": "craft-plugin",
-  "version": "3.3.1",
+  "version": "3.4.0",
   "keywords": [
-    "craft",
-    "cms",
-    "craftcms",
-    "craft-plugin",
     "matrix",
-    "anchor"
+    "matrix blocks",
+    "nested entries",
+    "anchor",
+    "anchor links",
+    "jump links",
+    "page builder",
+    "table of contents",
+    "in-page navigation",
+    "deep linking",
+    "section links"
   ],
   "license": "MIT",
   "authors": [
@@ -24,7 +29,8 @@
   },
   "require-dev": {
     "craftcms/ecs": "dev-main",
-    "craftcms/phpstan": "dev-main"
+    "craftcms/phpstan": "dev-main",
+    "phpstan/phpstan": "^2.2"
   },
   "minimum-stability": "stable",
   "prefer-stable": true,

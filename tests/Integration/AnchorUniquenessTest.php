@@ -115,7 +115,7 @@ describe('MatrixBlockAnchorField uniqueness validation', function() {
 
         // Update block B to steal block A's anchor
         $blockB->setFieldValue($anchorHandle, 'about-us');
-        $result = \Craft::$app->elements->saveElement($blockB);
+        $result = \Craft::$app->getElements()->saveElement($blockB);
 
         expect($result)->toBeFalse()
             ->and($blockB->hasErrors($anchorHandle))->toBeTrue();
@@ -126,7 +126,7 @@ describe('MatrixBlockAnchorField uniqueness validation', function() {
 
         $block = saveBlock($entry, $this->matrixField->id, $this->blockType->id, $this->anchorField->handle, 'about-us');
 
-        // Resave without touching the anchor — the canonical-check bypass should fire.
+        // The block's own stored anchor is skipped by its ID, so an unchanged anchor passes.
         $result = \Craft::$app->getElements()->saveElement($block);
 
         expect($result)->toBeTrue()
@@ -137,7 +137,7 @@ describe('MatrixBlockAnchorField uniqueness validation', function() {
 // ---------------------------------------------------------------------------
 // Multi-site propagation
 //
-// hasDuplicateAnchorInOwner() calls Entry::find()->primaryOwner($canonicalOwner),
+// _hasDuplicateAnchorInOwner() calls Entry::find()->primaryOwner($canonicalOwner),
 // and NestedElementQueryTrait::primaryOwner() sets $this->siteId to the owner's
 // own siteId. That locks the duplicate-check query to a single site: the one the
 // owner element was loaded in. These tests pin down that per-site-scoped behaviour
@@ -207,14 +207,8 @@ describe('MatrixBlockAnchorField uniqueness validation — multi-site propagatio
         expect($secondSiteBlock->hasErrors($this->anchorField->handle))->toBeTrue();
     });
 
-    it('allows the same anchor on two independent owner entries regardless of site', function() {
-        if (!$this->secondSite) {
-            $this->markTestSkipped('No second site configured — see config/project/sites/.');
-        }
-
-        // Two distinct owner entries (not propagated instances of the same entry) —
-        // uniqueness is scoped per-owner, so the same anchor on a different owner
-        // is unaffected, whether or not that owner happens to also exist in another site.
+    it('allows the same anchor on two different owner entries', function() {
+        // Uniqueness is scoped per owner, so the same anchor on another entry is fine.
         $entryA = EntryFactory::factory()->section($this->section->handle)->create();
         $entryB = EntryFactory::factory()->section($this->section->handle)->create();
 
