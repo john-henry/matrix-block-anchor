@@ -1,6 +1,7 @@
 {% macro configWarning(setting) -%}
     {{ "This is being overridden by the `{setting}` config setting."|t('matrix-block-anchor', {setting: setting })|markdown(inlineOnly=true) }}
-    {%- if setting == 'anchorPrefix' or setting == 'allowCustomAnchors' %} {{ 'Changing this will break any existing links that point to auto-generated/custom anchors.'|t('matrix-block-anchor') }}{% endif %}
+    {%- if setting == 'anchorPrefix' %} {{ 'Changing this will break any existing links that point to auto-generated anchors.'|t('matrix-block-anchor') }}{% endif %}
+    {%- if setting == 'allowCustomAnchors' %} {{ 'Turning this off breaks any links that point to custom anchors.'|t('matrix-block-anchor') }}{% endif %}
 {%- endmacro %}
 
 {% macro configTip(fieldType) -%}

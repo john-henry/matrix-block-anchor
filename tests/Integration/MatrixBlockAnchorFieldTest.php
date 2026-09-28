@@ -258,12 +258,14 @@ describe('MatrixBlockAnchorField::normalizeValue() unconditional sanitization', 
 
 describe('MatrixBlockAnchorField::validateAnchorId() format validation', function() {
     beforeEach(function() {
+        MatrixBlockAnchor::getInstance()->getSettings()->allowCustomAnchors = true;
+
         // Closure::bind gives the factory access to TestCase::createMock() (protected).
         // We mock craft\base\Element (not ElementInterface) because addError() is
         // inherited from yii\base\Model and is not declared on the interface — PHPUnit
         // can only configure methods that exist on the type being mocked.
         // craft\base\Element does not implement NestedElementInterface, so
-        // validateUniqueAnchor() returns early and only format rules run.
+        // _validateUniqueAnchor() returns early and only format rules run.
         $this->mockElement = Closure::bind(
             function(string $value, array &$errors): ElementInterface {
                 $element = $this->createMock(\craft\base\Element::class);
@@ -281,6 +283,17 @@ describe('MatrixBlockAnchorField::validateAnchorId() format validation', functio
             $this,
             \PHPUnit\Framework\TestCase::class
         );
+    });
+
+    it('adds no error when custom anchors are off, since auto anchors are always valid', function() {
+        MatrixBlockAnchor::getInstance()->getSettings()->allowCustomAnchors = false;
+        $errors = [];
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $element = ($this->mockElement)('1invalid', $errors);
+
+        $field->validateAnchorId($element);
+
+        expect($errors)->toBeEmpty();
     });
 
     it('adds no error for an empty value (skips validation)', function() {

@@ -11,7 +11,7 @@
     name: 'allowCustomAnchors',
     includeEnvVars: true,
     value: settings.allowCustomAnchors,
-    warning: config.allowCustomAnchors is defined ? macros.configWarning('allowCustomAnchors') : 'Changing this will break any existing links that point to auto-generated/custom anchors.'|t('matrix-block-anchor'),
+    warning: config.allowCustomAnchors is defined ? macros.configWarning('allowCustomAnchors') : 'Turning this off breaks any links that point to custom anchors.'|t('matrix-block-anchor'),
     tip: (config.allowCustomAnchors is not defined ? macros.configTip('booleanMenuField')),
 }) }}
 
@@ -32,15 +32,16 @@
 }) }}
 
 {{ forms.booleanMenuField({
-    label: allowCustomAnchors ? 'Use Legacy Separator (disabled because Allow Custom Anchors is true)'|t('matrix-block-anchor') : 'Use Legacy Separator'|t('matrix-block-anchor'),
-    instructions: 'Use a dash (-) between the prefix and ID for compatibility with plugin versions v2.x and earlier.'|t('matrix-block-anchor'),
+    label: 'Use Legacy Separator'|t('matrix-block-anchor'),
+    instructions: allowCustomAnchors
+        ? 'Use a dash (-) between the prefix and ID for compatibility with plugin versions v2.x and earlier. With custom anchors on, this applies to blocks left without one.'|t('matrix-block-anchor')
+        : 'Use a dash (-) between the prefix and ID for compatibility with plugin versions v2.x and earlier.'|t('matrix-block-anchor'),
     id: 'useLegacySeparator',
     name: 'useLegacySeparator',
     includeEnvVars: true,
     value: settings.useLegacySeparator,
     warning: (config.useLegacySeparator is defined ? macros.configWarning('useLegacySeparator')),
     tip: (config.useLegacySeparator is not defined ? macros.configTip('booleanMenuField')),
-    disabled: allowCustomAnchors,
 }) }}
 
 <hr>
@@ -81,10 +82,10 @@
     <ul class="bullets">
         {% for matrixFieldId, data in groupedUsage %}
             <li>
-            <a href="{{ data.matrixFieldUrl }}">{{ data.matrixField.name }}</a> (Matrix Field)
+            <a href="{{ data.matrixFieldUrl }}">{{ data.matrixField.name }}</a> ({{ 'Matrix Field'|t('matrix-block-anchor') }})
             </li>
             {% for entryTypeData in data.entryTypes %}
-                <li><a href="{{ entryTypeData.entryTypeUrl }}">{{ entryTypeData.entryType.name }}</a> (Entry Type)</li>
+                <li><a href="{{ entryTypeData.entryTypeUrl }}">{{ entryTypeData.entryType.name }}</a> ({{ 'Entry Type'|t('matrix-block-anchor') }})</li>
             {% endfor %}
             
             
