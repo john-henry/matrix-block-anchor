@@ -2,7 +2,7 @@
 
 {% set inputId = field.getInputId() %}
 
-<div class="mba-copytext">
+<div class="copytext mba-copytext">
     {{ forms.text({
         id: inputId,
         describedBy: field.describedBy,
@@ -13,9 +13,9 @@
     {{ tag('button', {
         type: 'button',
         class: 'btn mba-copy',
-        title: 'Copy to clipboard'|t('matrix-block-anchor'),
+        title: 'Copy to clipboard'|t('app'),
         aria: {
-            label: 'Copy to clipboard'|t('matrix-block-anchor'),
+            label: 'Copy to clipboard'|t('app'),
             controls: inputId,
         },
         data: {

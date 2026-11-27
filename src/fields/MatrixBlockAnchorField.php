@@ -6,6 +6,7 @@
 
 namespace johnhenry\matrixblockanchor\fields;
 
+use Closure;
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
@@ -14,6 +15,7 @@ use craft\base\PreviewableFieldInterface;
 use craft\elements\db\EntryQuery;
 use craft\elements\Entry;
 use craft\errors\InvalidFieldException;
+use craft\helpers\Html;
 use johnhenry\matrixblockanchor\MatrixBlockAnchor;
 use Twig\Error\LoaderError;
 use Twig\Error\RuntimeError;
@@ -57,6 +59,16 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      * @var string Prefix used when the configured one resolves to nothing usable
      */
     private const DEFAULT_PREFIX = 'blockIdAnchor';
+
+    /**
+     * @var string Craft 6's read-only copy input component
+     */
+    private const CRAFT_6_COPY_INPUT = 'CraftCms\Cms\Cp\Components\InputCopy';
+
+    /**
+     * @var string Craft 6's text input component
+     */
+    private const CRAFT_6_INPUT = 'CraftCms\Cms\Cp\Components\Input';
 
     // =========================================================================
     // Static Properties
@@ -211,6 +223,38 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
     }
 
     /**
+     * Hands the anchor checks to Craft 6, whose element validation asks each
+     * field for its rules through this method and never reads
+     * {@see self::getElementValidationRules()}. Craft 5 doesn't call it.
+     *
+     * Craft 6 only counts what a rule reports through `$fail`, so the errors
+     * the checks put on the element are moved across to it.
+     *
+     * @param ElementInterface $element The element being validated. Left untyped in the
+     * signature, since Craft 6 declares it with its own element interface.
+     * @return array<int, Closure> The validation rules
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.5.0
+     */
+    public function getElementRules($element): array
+    {
+        return [
+            function(string $attribute, mixed $value, Closure $fail) use ($element): void {
+                $this->validateAnchorId($element);
+
+                $errors = $element->getErrors($this->handle);
+                $element->clearErrors($this->handle);
+
+                foreach ($errors as $error) {
+                    // The messages mark the field name with Markdown emphasis,
+                    // which Craft 6 shows as literal asterisks.
+                    $fail(preg_replace('/\*([^*]+)\*/', '$1', $error) ?? $error);
+                }
+            },
+        ];
+    }
+
+    /**
      * Validates a typed anchor: its format, and that no other block on the owner
      * uses it. Auto anchors are always valid and unique, so they're skipped.
      *
@@ -316,7 +360,8 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
     // =========================================================================
 
     /**
-     * Renders the input template.
+     * Renders the input: Craft 6's own copy input where it exists, otherwise
+     * the plugin's template, which uses Craft 5's copy-text markup.
      *
      * @param mixed $value The field value
      * @param ElementInterface|null $element The element the field is associated with
@@ -333,12 +378,67 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
             ? $this->_removeHashPrefix($value)
             : $this->_autoAnchor($element);
 
+        $name = $static ? null : $this->handle;
+        $readonly = $static || !$allowCustomAnchors;
+
+        if (class_exists(self::CRAFT_6_COPY_INPUT)) {
+            return $this->_renderCraft6Input($name, '#' . $anchor, $readonly);
+        }
+
         return Craft::$app->getView()->renderTemplate(self::TEMPLATE_PATH, [
             'field' => $this,
-            'name' => $static ? null : $this->handle,
+            'name' => $name,
             'value' => '#' . $anchor,
-            'readonly' => $static || !$allowCustomAnchors,
+            'readonly' => $readonly,
         ]);
+    }
+
+    /**
+     * Renders the input from Craft 6's own components, which the plugin's
+     * template can only imitate.
+     *
+     * A read-only anchor is Craft's copy input as it stands. That component is
+     * always read-only in the browser, so an editable anchor is Craft's text
+     * input with Craft's copy button placed in its suffix, which is what the
+     * copy input is made of. The button copies its own `value`, and the
+     * plugin's script keeps that in step with what's typed.
+     *
+     * The component classes are named in strings because they don't exist on
+     * Craft 5.
+     *
+     * @param string|null $name The input name, or null for a static render
+     * @param string $value The anchor, with its hash prefix
+     * @param bool $readonly Whether the anchor can't be edited
+     * @return string The rendered HTML
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.5.0
+     */
+    private function _renderCraft6Input(?string $name, string $value, bool $readonly): string
+    {
+        $component = $readonly ? self::CRAFT_6_COPY_INPUT : self::CRAFT_6_INPUT;
+
+        $html = $component::make()
+            ->id($this->getInputId())
+            ->name($name)
+            ->value($value)
+            ->describedBy($this->describedBy ?: null)
+            ->inlineSuffix()
+            ->toHtml();
+
+        if ($readonly) {
+            return $html;
+        }
+
+        $button = Html::tag('craft-copy-button', '', [
+            'slot' => 'suffix',
+            'tooltip-label' => Craft::t('app', 'Copy'),
+            'size' => 'small',
+            'variant' => 'plain',
+            'value' => $value,
+            'data-mba-copy' => true,
+        ]);
+
+        return str_replace('</craft-input>', $button . '</craft-input>', $html);
     }
 
     /**
@@ -551,8 +651,8 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
     /**
      * Returns the typed anchors stored on the owner's blocks, keyed by block ID.
      *
-     * Reads the canonical owner's blocks in the owner's site. Built once per owner per request,
-     * because a save validates every block and reloading them all for each one is quadratic.
+     * Reads the owner's blocks in the owner's site. Built once per owner per request, because a
+     * save validates every block and reloading them all for each one is quadratic.
      *
      * @param ElementInterface $owner The owner element
      * @return array<int, array{anchor: string, fieldId: int|null}> Anchors keyed by block ID
@@ -563,18 +663,27 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
      */
     private function _storedAnchorsFor(ElementInterface $owner): array
     {
-        $canonicalOwner = $owner->getCanonical();
-        $key = $canonicalOwner->id . ':' . $canonicalOwner->siteId;
+        if ($owner->id === null) {
+            return [];
+        }
+
+        $key = $owner->id . ':' . $owner->siteId;
 
         if (isset(self::$_storedAnchors[$key])) {
             return self::$_storedAnchors[$key];
         }
 
+        // A draft is checked against the blocks it would publish: the ones added
+        // to it, which the canonical entry doesn't have yet, and the canonical
+        // entry's blocks it still shares. Its own copy of a block is keyed by
+        // the canonical block's ID, the same ID the block being validated is
+        // looked up by.
+        $query = Entry::find()->status(null);
+        $blocks = $owner->getIsCanonical()
+            ? $query->primaryOwner($owner)->all()
+            : $query->owner($owner)->all();
+
         $anchors = [];
-        $blocks = Entry::find()
-            ->primaryOwner($canonicalOwner)
-            ->status(null)
-            ->all();
 
         foreach ($blocks as $block) {
             foreach ($block->getFieldLayout()?->getCustomFields() ?? [] as $blockField) {
@@ -584,7 +693,7 @@ class MatrixBlockAnchorField extends Field implements PreviewableFieldInterface
 
                 $anchor = $block->getFieldValue($blockField->handle);
                 if (is_string($anchor) && !$this->_isAutoAnchor($anchor)) {
-                    $anchors[$block->id] = ['anchor' => $anchor, 'fieldId' => $block->fieldId];
+                    $anchors[$block->getCanonicalId() ?? $block->id] = ['anchor' => $anchor, 'fieldId' => $block->fieldId];
                 }
             }
         }

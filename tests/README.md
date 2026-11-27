@@ -1,72 +1,48 @@
-# Tests — Matrix Block Anchor
+# Matrix Block Anchor tests
 
 Integration tests for the Matrix Block Anchor plugin, using [craft-pest](https://craftpest.com/).
 
 ## Requirements
 
-Tests run inside the parent Craft project, which provides the full Craft + database context.
+The tests run inside the parent Craft project, which provides Craft and the database.
 
-- PHP ≥ 8.2
-- The parent project must have `markhuot/craft-pest-core` installed
-- The **Matrix Block Anchor** plugin must be installed in the parent Craft project
+- PHP 8.2 or later
+- `markhuot/craft-pest-core` installed in the parent project
+- The Matrix Block Anchor plugin installed in the parent project
 
 ## Running tests
 
-From the **parent project root**:
+From the parent project root:
 
 ```bash
-ddev exec vendor/bin/pest plugins/matrix-block-anchor/tests \
-  --test-directory=plugins/matrix-block-anchor/tests
+ddev exec composer test:mba
 ```
 
-To run a single file:
+To run a single file, keep the `--test-directory` flag. Without it the plugin's `Pest.php` is skipped and the run passes without testing anything:
 
 ```bash
 ddev exec vendor/bin/pest plugins/matrix-block-anchor/tests/Integration/SettingsModelTest.php \
   --test-directory=plugins/matrix-block-anchor/tests
 ```
 
-## Test coverage
+## What each file covers
 
-### `SettingsModelTest.php`
+| File | Covers |
+|------|--------|
+| `SettingsModelTest.php` | Settings defaults, prefix validation, the boolean settings and their getters |
+| `MatrixBlockAnchorFieldTest.php` | Field metadata, previews, `normalizeValue()` for auto, legacy and custom anchors, cleaning of values that skip validation, format validation, and the Craft 6 `getElementRules()` path |
+| `AnchorUniquenessTest.php` | Uniqueness on one entry, on drafts, and across sites |
+| `OwnerSaveTest.php` | Saving blocks through the owner entry: duplicates in one save, swapped anchors, removed blocks, and blocks left blank |
+| `EntryTypeSwitchTest.php` | A draft block switched to an entry type that has the anchor field |
+| `AnchorInputRenderTest.php` | The input is read-only, not disabled, when custom anchors are off |
+| `PluginBootTest.php` | The plugin trait is still wired to the main class |
 
-Tests the `Settings` model (`src/models/Settings.php`):
+## How the format validation mocks work
 
-| Area | Cases |
-|------|-------|
-| Default values | Correct defaults for all three properties |
-| `anchorPrefix` validation | Valid prefix; prefix starting with digit; prefix containing spaces or tabs; empty prefix |
-| Boolean fields | `allowCustomAnchors` and `useLegacySeparator` accept boolean values |
+The format tests mock `craft\base\Element` rather than `ElementInterface`. PHPUnit can only configure methods declared on the mocked type, and `addError()` comes from `yii\base\Model`, not the interface.
 
-### `MatrixBlockAnchorFieldTest.php`
+`craft\base\Element` doesn't implement `NestedElementInterface`, so `_validateUniqueAnchor()` returns early and only the format rules run. That keeps these tests fast, with no real Matrix block to build.
 
-Tests the `MatrixBlockAnchorField` field type (`src/fields/MatrixBlockAnchorField.php`):
+`addError()` calls are captured into a plain array, so a test can check which field got an error without going through Craft's error bag.
 
-| Area | Cases |
-|------|-------|
-| Metadata | `displayName()`, `getElementValidationRules()` |
-| `normalizeValue()` — auto-generation | Null element returns prefix; stored value ignored when custom anchors disabled; result starts with configured prefix |
-| `normalizeValue()` — custom anchors | Stored value used; leading `#` stripped; empty value falls back to auto-generation |
-| Format validation | Valid anchors pass; invalid cases: starts with digit, contains space/tab, contains special characters or dots, exceeds 100-character limit; exact 100-character length accepted |
-
-### `AnchorUniquenessTest.php`
-
-Integration tests for the uniqueness validation in `MatrixBlockAnchorField`. Requires a live Craft + database context — each test builds a real section, matrix field, block entry type, and anchor field via factories, then asserts on `saveElement` results.
-
-| Area | Cases |
-|------|-------|
-| Single block | Entry with one block saves without errors |
-| Distinct anchors | Two blocks with different anchors save without errors |
-| Duplicate blocked | Adding a block whose anchor matches an existing block on the same entry fails with an error on the anchor field |
-| Unique accepted | Adding a block with a fresh anchor to an existing entry succeeds |
-| Resave unchanged | Resaving an existing block without changing its anchor does not trigger a uniqueness error |
-
-## How the mocks work
-
-Format validation tests use a `PHPUnit\Framework\MockObject` of `craft\base\ElementInterface`. Critically, this mock is **not** a `NestedElementInterface`, so `_validateUniqueAnchor()` returns early — only the format rules run. This keeps the tests focused and fast without needing a real matrix block hierarchy.
-
-`addError()` calls on the mock are captured into a plain array so tests can assert on which field received an error without inspecting Craft's error bag.
-
-The mock factory is stored in `$this->mockElement` via `beforeEach`. Because `createMock()` is `protected` on `PHPUnit\Framework\TestCase`, the factory is a closure bound to the TestCase instance using `Closure::bind($factory, $this, \PHPUnit\Framework\TestCase::class)`.
-
-The mock targets `craft\base\Element` (the abstract base class) rather than `ElementInterface`. PHPUnit can only configure methods that are declared on the type being mocked, and `addError()` is inherited from `yii\base\Model` — it is not part of the interface. `craft\base\Element` does not implement `NestedElementInterface`, so the `_validateUniqueAnchor()` guard still fires and returns early.
+`createMock()` is protected on `PHPUnit\Framework\TestCase`, so the mock factory set in `beforeEach` is a closure bound to the test case with `Closure::bind($factory, $this, \PHPUnit\Framework\TestCase::class)`.

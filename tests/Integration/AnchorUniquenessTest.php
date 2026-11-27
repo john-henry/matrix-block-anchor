@@ -10,7 +10,7 @@ use markhuot\craftpest\factories\MatrixField as MatrixFieldFactory;
 use markhuot\craftpest\factories\Section as SectionFactory;
 
 // ---------------------------------------------------------------------------
-// Skip guard — the multi-site tests below depend on a second, non-primary
+// Skip guard: the multi-site tests below depend on a second, non-primary
 // site being configured (see config/project/sites/). Without it these tests
 // would report a false pass/fail that doesn't reflect the scoping behavior
 // under test.
@@ -30,7 +30,7 @@ function secondSite(): ?\craft\models\Site
 }
 
 // ---------------------------------------------------------------------------
-// Helper — saves a new matrix block on an existing entry via saveElement so
+// Helper: saves a new matrix block on an existing entry via saveElement so
 // callers can inspect the return value and any validation errors.
 // ---------------------------------------------------------------------------
 
@@ -132,19 +132,62 @@ describe('MatrixBlockAnchorField uniqueness validation', function() {
         expect($result)->toBeTrue()
             ->and($block->hasErrors($this->anchorField->handle))->toBeFalse();
     });
+
+    it('rejects a second block with the same anchor when both belong to an unsaved draft of the entry', function() {
+        // Editing a saved entry puts new blocks on its provisional draft. Saved one
+        // at a time, as the cards view does, neither is on the canonical entry yet.
+        $entry = EntryFactory::factory()->section($this->section->handle)->create();
+        $creator = \craft\elements\User::find()->status(null)->one();
+        $draft = \Craft::$app->getDrafts()->createDraft($entry, $creator->id, provisional: true);
+        $anchorHandle = $this->anchorField->handle;
+
+        $first = saveBlock($draft, $this->matrixField->id, $this->blockType->id, $anchorHandle, 'about-us');
+        $second = saveBlock($draft, $this->matrixField->id, $this->blockType->id, $anchorHandle, 'about-us');
+
+        expect($first->id)->not->toBeNull()
+            ->and($first->hasErrors($anchorHandle))->toBeFalse()
+            ->and($second->hasErrors($anchorHandle))->toBeTrue();
+    });
+
+    it('rejects a block added to a draft that takes an anchor a saved block already has', function() {
+        $entry = EntryFactory::factory()->section($this->section->handle)->create();
+        $anchorHandle = $this->anchorField->handle;
+        saveBlock($entry, $this->matrixField->id, $this->blockType->id, $anchorHandle, 'about-us');
+
+        $creator = \craft\elements\User::find()->status(null)->one();
+        $draft = \Craft::$app->getDrafts()->createDraft($entry, $creator->id, provisional: true);
+
+        $added = saveBlock($draft, $this->matrixField->id, $this->blockType->id, $anchorHandle, 'about-us');
+
+        expect($added->hasErrors($anchorHandle))->toBeTrue();
+    });
+
+    it('accepts a block added to a draft with an anchor of its own', function() {
+        $entry = EntryFactory::factory()->section($this->section->handle)->create();
+        $anchorHandle = $this->anchorField->handle;
+        saveBlock($entry, $this->matrixField->id, $this->blockType->id, $anchorHandle, 'about-us');
+
+        $creator = \craft\elements\User::find()->status(null)->one();
+        $draft = \Craft::$app->getDrafts()->createDraft($entry, $creator->id, provisional: true);
+
+        $added = saveBlock($draft, $this->matrixField->id, $this->blockType->id, $anchorHandle, 'contact');
+
+        expect($added->id)->not->toBeNull()
+            ->and($added->hasErrors($anchorHandle))->toBeFalse();
+    });
 });
 
 // ---------------------------------------------------------------------------
 // Multi-site propagation
 //
-// _hasDuplicateAnchorInOwner() calls Entry::find()->primaryOwner($canonicalOwner),
+// The stored-anchor lookup for a canonical owner calls Entry::find()->primaryOwner(),
 // and NestedElementQueryTrait::primaryOwner() sets $this->siteId to the owner's
 // own siteId. That locks the duplicate-check query to a single site: the one the
 // owner element was loaded in. These tests pin down that per-site-scoped behaviour
 // so a future change to it shows up as a failing test.
 // ---------------------------------------------------------------------------
 
-describe('MatrixBlockAnchorField uniqueness validation — multi-site propagation', function() {
+describe('MatrixBlockAnchorField uniqueness validation: multi-site propagation', function() {
     beforeEach(function() {
         $this->secondSite = secondSite();
 
@@ -180,7 +223,7 @@ describe('MatrixBlockAnchorField uniqueness validation — multi-site propagatio
 
     it('rejects the same anchor on the second site\'s propagated instance of the same owner entry', function() {
         if (!$this->secondSite) {
-            $this->markTestSkipped('No second site configured — see config/project/sites/.');
+            $this->markTestSkipped('No second site configured. See config/project/sites/.');
         }
 
         $primaryEntry = EntryFactory::factory()->section($this->section->handle)->create();

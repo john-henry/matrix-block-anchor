@@ -23,8 +23,6 @@ use markhuot\craftpest\factories\Section as SectionFactory;
 // field layout, so the owner entry ends up with an empty layout and the real
 // draft machinery never duplicates the blocks. Setting canonicalId on an
 // unsaved block puts the validator in exactly the state the CP flow produces.
-//
-// Regression cover for https://github.com/john-henry/matrix-block-anchor/issues/7
 // ---------------------------------------------------------------------------
 
 describe('MatrixBlockAnchorField entry type switching', function() {

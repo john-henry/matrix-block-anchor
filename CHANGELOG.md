@@ -1,5 +1,17 @@
 # Release Notes for Matrix Block Anchor
 
+## 3.5.0 - 2026-11-27
+
+### Added
+- Craft CMS 6 support. Craft 6 needs PHP 8.5, and your project has to require the `craftcms/yii2-adapter` package itself.
+
+### Changed
+- The anchor field now looks like Craft's own copy field, and copying shows Craft's "Copied to clipboard" notice.
+- Field Usage nests each entry type under the Matrix field it belongs to.
+
+### Fixed
+- Two blocks added to an entry before it's saved can no longer be given the same anchor.
+
 ## 3.4.0 - 2026-09-25
 
 ### Added
@@ -49,9 +61,6 @@
 ### Changed
 - New branding.
 - The plugin settings page has clearer wording.
-
-### Fixed
-- The duplicate anchor error no longer shows for Matrix fields in card view. ([#6](https://github.com/john-henry/matrix-block-anchor/issues/6))
 
 ## 3.1.2 - 2026-03-15
 

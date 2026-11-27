@@ -156,8 +156,13 @@ trait PluginTrait
     {
         $usage = [];
 
-        foreach (Craft::$app->getFields()->getFieldsByType(Matrix::class) as $matrixField) {
-            assert($matrixField instanceof Matrix);
+        foreach (Craft::$app->getFields()->getAllFields() as $field) {
+            if (!self::_isMatrixField($field)) {
+                continue;
+            }
+
+            /** @var Matrix $matrixField */
+            $matrixField = $field;
 
             foreach ($matrixField->getEntryTypes() as $entryType) {
                 foreach ($entryType->getFieldLayout()->getCustomFields() as $anchorField) {
@@ -177,5 +182,23 @@ trait PluginTrait
         }
 
         return $usage;
+    }
+
+    /**
+     * Returns whether a field is a Matrix field.
+     *
+     * On Craft 6 a Matrix field is an instance of Craft's own Matrix class,
+     * which `craft\fields\Matrix` extends rather than the other way round, so
+     * neither check alone covers both versions.
+     *
+     * @param object $field The field to check. Not typed as a field, since Craft 6's own
+     * fields don't implement `craft\base\FieldInterface`.
+     * @return bool Whether it is a Matrix field.
+     * @author John Henry Donovan <info@johnhenry.ie>
+     * @since 3.5.0
+     */
+    private static function _isMatrixField(object $field): bool
+    {
+        return $field instanceof Matrix || is_a($field, 'CraftCms\Cms\Field\Matrix');
     }
 }

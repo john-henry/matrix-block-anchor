@@ -63,8 +63,6 @@ class MatrixBlockAnchorAssets extends AssetBundle
 
         if ($view instanceof View) {
             $view->registerTranslations('matrix-block-anchor', [
-                'copied',
-                'error',
                 'No anchor text found to copy.',
                 'Failed to copy anchor to clipboard.',
             ]);

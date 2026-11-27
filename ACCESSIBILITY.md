@@ -1,10 +1,10 @@
 # Accessibility statement for Matrix Block Anchor
 
-Matrix Block Anchor is a plugin for Craft CMS 5. This statement sets out how accessible it is, what I know is wrong with it, and how to tell me about anything else.
+Matrix Block Anchor is a plugin for Craft CMS 5 and 6. This statement sets out how accessible it is, what I know is wrong with it, and how to tell me about anything else.
 
 ## What this covers
 
-This statement covers Matrix Block Anchor 3.4.0:
+This statement covers Matrix Block Anchor 3.5.0:
 
 - the Matrix Block Anchor field, including its copy button
 - the plugin settings page
@@ -20,7 +20,7 @@ WCAG 2.2 level AA. Matrix Block Anchor adds to the Craft control panel, which is
 
 ## How far it meets it
 
-I believe it meets WCAG 2.2 AA, and the review found no issues. It hasn't been tested with assistive technology yet, though, so I'm not claiming full conformance until it has.
+The September review of 3.4.0 found no issues against WCAG 2.2 AA. In 3.5.0 the anchor field changed to look like Craft's own copy field and the Field Usage list on the settings page was regrouped, and neither change has been reviewed yet. Nothing has been tested with assistive technology yet either, so I'm not claiming full conformance until both are done.
 
 ## How it was checked
 
@@ -39,4 +39,4 @@ If something in Matrix Block Anchor is hard or impossible for you to use, open a
 
 ## Last reviewed
 
-27 September 2026, for version 3.4.0.
+27 September 2026, for version 3.4.0. The changes in 3.5.0 haven't been reviewed yet.
