@@ -41,7 +41,7 @@ class Settings extends Model
     /**
      * @var bool|string|null Whether to use the legacy hyphen separator between prefix and block ID.
      *                       Accepts a boolean or an `$ENV_VAR` reference string.
-     * @since 2.0.0
+     * @since 3.0.0
      */
     public bool|string|null $useLegacySeparator = false;
 
@@ -77,7 +77,7 @@ class Settings extends Model
      * @param bool $parse Whether to resolve env var references
      * @return bool|string The resolved boolean, or the raw env-var string when unparsed
      * @author John Henry Donovan <info@johnhenry.ie>
-     * @since 2.0.0
+     * @since 3.0.0
      */
     public function getUseLegacySeparator(bool $parse = true): bool|string
     {

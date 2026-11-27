@@ -2,7 +2,7 @@
   "name": "johnhenry/matrix-block-anchor",
   "description": "Anchor links for Matrix blocks, built from the block ID or set by an editor, with a copy button on each.",
   "type": "craft-plugin",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "keywords": [
     "matrix",
     "matrix blocks",
@@ -25,7 +25,7 @@
   ],
   "require": {
     "php": "^8.2 || ^8.3 || ^8.4",
-    "craftcms/cms": "^5.0"
+    "craftcms/cms": "^5.0 || ^6.0.0-beta.1"
   },
   "require-dev": {
     "craftcms/ecs": "dev-main",

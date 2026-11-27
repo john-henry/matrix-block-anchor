@@ -5,6 +5,7 @@
 <h2>{{ 'Custom Anchor Settings'|t('matrix-block-anchor') }}</h2>
 
 {{ forms.booleanMenuField({
+    fieldClass: 'mba-settings-field',
     label: 'Allow Custom Anchors'|t('matrix-block-anchor'),
     instructions: 'Allow users to manually set an anchor instead of using the automatically generated one.'|t('matrix-block-anchor'),
     id: 'allowCustomAnchors',
@@ -82,13 +83,13 @@
     <ul class="bullets">
         {% for matrixFieldId, data in groupedUsage %}
             <li>
-            <a href="{{ data.matrixFieldUrl }}">{{ data.matrixField.name }}</a> ({{ 'Matrix Field'|t('matrix-block-anchor') }})
+                <a href="{{ data.matrixFieldUrl }}">{{ data.matrixField.name }}</a> ({{ 'Matrix Field'|t('matrix-block-anchor') }})
+                <ul class="bullets">
+                    {% for entryTypeData in data.entryTypes %}
+                        <li><a href="{{ entryTypeData.entryTypeUrl }}">{{ entryTypeData.entryType.name }}</a> ({{ 'Entry Type'|t('matrix-block-anchor') }})</li>
+                    {% endfor %}
+                </ul>
             </li>
-            {% for entryTypeData in data.entryTypes %}
-                <li><a href="{{ entryTypeData.entryTypeUrl }}">{{ entryTypeData.entryType.name }}</a> ({{ 'Entry Type'|t('matrix-block-anchor') }})</li>
-            {% endfor %}
-            
-            
         {% endfor %}
     </ul>
 {% endif %}

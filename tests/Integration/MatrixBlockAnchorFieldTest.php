@@ -93,7 +93,7 @@ describe('MatrixBlockAnchorField::previewPlaceholderHtml()', function() {
 });
 
 // ---------------------------------------------------------------------------
-// normalizeValue — auto-generated anchors (custom anchors disabled)
+// normalizeValue: auto-generated anchors (custom anchors disabled)
 // ---------------------------------------------------------------------------
 
 describe('MatrixBlockAnchorField::normalizeValue() auto-generation', function() {
@@ -123,7 +123,7 @@ describe('MatrixBlockAnchorField::normalizeValue() auto-generation', function() 
 });
 
 // ---------------------------------------------------------------------------
-// normalizeValue — legacy separator
+// normalizeValue: legacy separator
 // ---------------------------------------------------------------------------
 
 describe('MatrixBlockAnchorField::normalizeValue() legacy separator', function() {
@@ -157,7 +157,7 @@ describe('MatrixBlockAnchorField::normalizeValue() legacy separator', function()
 });
 
 // ---------------------------------------------------------------------------
-// normalizeValue — custom anchors enabled
+// normalizeValue: custom anchors enabled
 // ---------------------------------------------------------------------------
 
 describe('MatrixBlockAnchorField::normalizeValue() custom anchors', function() {
@@ -194,7 +194,7 @@ describe('MatrixBlockAnchorField::normalizeValue() custom anchors', function() {
 });
 
 // ---------------------------------------------------------------------------
-// normalizeValue — sanitization on write paths that bypass validateAnchorId()
+// normalizeValue: sanitization on write paths that bypass validateAnchorId()
 //
 // validateAnchorId() only runs via Element::afterValidate() for the editable
 // CP save scenario. Feed Me imports, console resaves, and any programmatic
@@ -253,7 +253,7 @@ describe('MatrixBlockAnchorField::normalizeValue() unconditional sanitization', 
 });
 
 // ---------------------------------------------------------------------------
-// validateAnchorId — format rules
+// validateAnchorId: format rules
 // ---------------------------------------------------------------------------
 
 describe('MatrixBlockAnchorField::validateAnchorId() format validation', function() {
@@ -262,7 +262,7 @@ describe('MatrixBlockAnchorField::validateAnchorId() format validation', functio
 
         // Closure::bind gives the factory access to TestCase::createMock() (protected).
         // We mock craft\base\Element (not ElementInterface) because addError() is
-        // inherited from yii\base\Model and is not declared on the interface — PHPUnit
+        // inherited from yii\base\Model and is not declared on the interface. PHPUnit
         // can only configure methods that exist on the type being mocked.
         // craft\base\Element does not implement NestedElementInterface, so
         // _validateUniqueAnchor() returns early and only format rules run.
@@ -406,5 +406,57 @@ describe('MatrixBlockAnchorField::validateAnchorId() format validation', functio
         $field->validateAnchorId($element);
 
         expect($errors)->toBeEmpty();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getElementRules: the rule Craft 6 runs in place of getElementValidationRules()
+// ---------------------------------------------------------------------------
+
+describe('MatrixBlockAnchorField::getElementRules()', function() {
+    beforeEach(function() {
+        MatrixBlockAnchor::getInstance()->getSettings()->allowCustomAnchors = true;
+
+        // Only getFieldValue() is stubbed, so addError(), getErrors() and
+        // clearErrors() are the real ones the rule moves errors through.
+        $this->elementWithAnchor = Closure::bind(
+            function(string $value): ElementInterface {
+                $element = $this->getMockBuilder(\craft\base\Element::class)
+                    ->onlyMethods(['getFieldValue'])
+                    ->getMock();
+                $element->method('getFieldValue')->willReturn($value);
+
+                return $element;
+            },
+            $this,
+            \PHPUnit\Framework\TestCase::class
+        );
+    });
+
+    it('reports a bad anchor through the fail callback and leaves no error on the element', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $element = ($this->elementWithAnchor)('has space');
+        $failures = [];
+
+        $rule = $field->getElementRules($element)[0];
+        $rule('field:anchor', 'has space', function(string $message) use (&$failures): void {
+            $failures[] = $message;
+        });
+
+        expect($failures)->toHaveCount(1)
+            ->and($element->getErrors('anchor'))->toBeEmpty();
+    });
+
+    it('reports nothing for a valid anchor', function() {
+        $field = new MatrixBlockAnchorField(['handle' => 'anchor']);
+        $element = ($this->elementWithAnchor)('valid-anchor');
+        $failures = [];
+
+        $rule = $field->getElementRules($element)[0];
+        $rule('field:anchor', 'valid-anchor', function(string $message) use (&$failures): void {
+            $failures[] = $message;
+        });
+
+        expect($failures)->toBeEmpty();
     });
 });
